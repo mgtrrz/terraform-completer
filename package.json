@@ -2,14 +2,14 @@
     "name": "terraform-autocomplete",
     "displayName": "Terraform Autocomplete",
     "description": "Autocomplete for AWS resources with terraform.",
-    "version": "0.0.8",
-    "publisher": "erd0s",
+    "version": "0.1.0",
+    "publisher": "mgtrrz",
     "repository": {
         "type": "git",
-        "url": "https://github.com/erd0s/terraform-autocomplete"
+        "url": "https://github.com/mgtrrz/terraform-autocomplete"
     },
     "engines": {
-        "vscode": "^1.5.0"
+        "vscode": "^1.50.0"
     },
     "categories": [
         "Other"
@@ -57,8 +57,8 @@
         "vscode": "^1.1.5"
     },
     "dependencies": {
-        "@types/opn": "^3.0.28",
-        "lodash": "^4.17.4",
-        "opn": "^5.1.0"
+        "@types/open": "^6.2.1",
+        "@types/request": "^2.48.5",
+        "lodash": "^4.17.4"
     }
 }

@@ -191,12 +191,16 @@ export class TerraformCompletionProvider implements CompletionItemProvider {
     }
 
     getResourceTypeFromLine(line: string): string {
+        console.log(`gotResourceTypeFromLine: ${line}`);
         var lineParts = line.split(" ");
         var type = lineParts[1];
         return type.replace(/"/g, '');
     }
 
     getItemsForArgs(args, type) {
+        console.log(`getItemsForArgs:`);
+        console.log(args);
+        console.log(type);
         return _.map(args, o => {
             let c = new CompletionItem(`${o.name} (${type})`, CompletionItemKind.Property);
             c.detail = o.description;
