@@ -10,23 +10,12 @@ var topLevelRegexes = topLevelTypes.map(o => {
     };
 });
 
-const topLevelModuleType = ["module"];
-var topLevelModuleRegex = topLevelModuleType.map(o => {
-    return {
-        type: o,
-        regex: new RegExp(o + ' "[A-Za-z0-9\-_]+" \{')
-    };
-});
+var topLevelModuleRegex = {
+    type: "module",
+    regex: new RegExp('module "[A-Za-z0-9\-_]+" \{')
+};
 
-const moduleSource = ["source", "version"];
-var topLevelModuleSourceRegex = moduleSource.map(o => {
-    return {
-        type: o,
-        regex: new RegExp('\s*' + o + '\s*=\s*"[A-Za-z0-9\/\-_]+"')
-    };
-});
-
-var moduleInfo = [
+var moduleInfoRegex = [
     {
         type: "source",
         regex: /\s*source\s*=\s*"([A-Za-z0-9\/\-_]+)"/
@@ -243,7 +232,7 @@ export class TerraformCompletionProvider implements CompletionItemProvider {
 
         for (var i = this.position.line - 1; i >= 0; i--) {
             let line = this.document.lineAt(i).text;
-            for (let obj of moduleInfo) {
+            for (let obj of moduleInfoRegex) {
                 if (obj.regex.test(line)) {
                     console.log("Successfully found type: ");
                     console.log(obj.type);
@@ -268,13 +257,10 @@ export class TerraformCompletionProvider implements CompletionItemProvider {
             }
         }
         // Checking for modules
-        for (var i = 0; i < topLevelModuleRegex.length; i++) {
-            let tl = topLevelModuleRegex[i];
-            if (tl.regex.test(line)) {
-                console.log("Successfully found type: ")
-                console.log(tl)
-                return tl;
-            }
+        if (topLevelModuleRegex.regex.test(line)) {
+            console.log("Successfully found type: ")
+            console.log(topLevelModuleRegex.type)
+            return topLevelModuleRegex;
         }
 
         return false;
@@ -284,14 +270,6 @@ export class TerraformCompletionProvider implements CompletionItemProvider {
         console.log(`gotResourceTypeFromLine: ${line}`);
         var lineParts = line.split(" ");
         var type = lineParts[1];
-        return type.replace(/"/g, '');
-    }
-
-    getValueFromLine(line: string): string {
-        console.log(`getValueFromLine: ${line}`);
-        var lineParts = line.split(" ");
-        console.log(lineParts)
-        var type = lineParts[3];
         return type.replace(/"/g, '');
     }
 
