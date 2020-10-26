@@ -316,9 +316,15 @@ export class TerraformCompletionProvider implements CompletionItemProvider {
                 console.log(args)
 
                 resolve(_.map(args, o => {
-                    console.log("Returning _.map!")
                     let c = new CompletionItem(`${o.name} (${module})`, CompletionItemKind.Property);
-                    c.detail = o.description;
+                    c.kind = CompletionItemKind.Variable;
+                    let def = "";
+                    if (o.required) {
+                        def = "Required - "
+                    } else {
+                        def = `Optional (Default: ${o.default}) - `
+                    }
+                    c.detail = def + o.description;
                     c.insertText = o.name;
                     return c;
                 }));
