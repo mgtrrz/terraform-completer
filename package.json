@@ -59,6 +59,7 @@
     "dependencies": {
         "@types/open": "^6.2.1",
         "@types/request": "^2.48.5",
-        "lodash": "^4.17.4"
+        "lodash": "^4.17.4",
+        "vscode-cache": "^0.3.0"
     }
 }

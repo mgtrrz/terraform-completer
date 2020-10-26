@@ -1,6 +1,11 @@
 import { CompletionItemProvider, TextDocument, Position, CancellationToken, CompletionItem, CompletionItemKind } from "vscode";
 var resources = require('../../aws-resources.json');
 import * as _ from "lodash";
+import * as request from 'request'; 
+
+const Cache = require('vscode-cache');
+
+const REGISTRY_MODULES_URL: string = 'https://registry.terraform.io/v1/modules/';
 
 const topLevelTypes = ["output", "provider", "resource", "variable", "data"];
 var topLevelRegexes = topLevelTypes.map(o => {
@@ -31,7 +36,7 @@ export class TerraformCompletionProvider implements CompletionItemProvider {
     position: Position;
     token: CancellationToken;
 
-    public provideCompletionItems(document: TextDocument, position: Position, token: CancellationToken): CompletionItem[] {
+    public async provideCompletionItems(document: TextDocument, position: Position, token: CancellationToken): CompletionItem[] {
         console.log("provideCompletionItems called. Entry point!")
         this.document = document;
         this.position = position;
@@ -116,8 +121,13 @@ export class TerraformCompletionProvider implements CompletionItemProvider {
                 return this.getItemsForArgs(resources[resourceType].args, resourceType);           
             }  else if (parentType && parentType.type == "module") {
                 console.log("We're in a module!")
-                this.getModuleSourceAndVersion();
-                return [];     
+                let moduleData = this.getModuleSourceAndVersion();
+                if (moduleData.source) {
+                    let obj = await this.getItemsForModule(moduleData.source, moduleData.version);
+                    console.log("Got Object!")
+                    console.log(obj)
+                    return obj;
+                }   
             } else if (parentType && parentType.type != "resource") {
                 console.log("We're not in a resource type!")
                 // We don't want to accidentally include some other containers stuff
@@ -282,6 +292,38 @@ export class TerraformCompletionProvider implements CompletionItemProvider {
             c.detail = o.description;
             c.insertText = o.name;
             return c;
+        });
+    }
+
+    getItemsForModule(module: string, version: string = "") {
+        if (version) {
+            console.log('Got version')
+            version = `/${version}`
+        }
+        let url = REGISTRY_MODULES_URL + module + version
+        console.log(url)
+        var args = []
+        
+        return new Promise(function (resolve, reject) {
+            console.log("Making request..")
+            request(url, { json: true }, (err, res, body) => {
+                if (err) { reject(console.log(err)); }
+                console.log("Got request! Logging body..")
+                console.log(body);
+                let response = body;
+
+                args = response["root"]["inputs"];
+                console.log(args)
+
+                resolve(_.map(args, o => {
+                    console.log("Returning _.map!")
+                    let c = new CompletionItem(`${o.name} (${module})`, CompletionItemKind.Property);
+                    c.detail = o.description;
+                    c.insertText = o.name;
+                    return c;
+                }));
+
+            });
         });
     }
 }
