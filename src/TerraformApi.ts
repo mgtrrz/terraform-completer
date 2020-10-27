@@ -5,6 +5,8 @@ import {
     CancellationToken,
     Definition,
     workspace,
+    version,
+    extensions
 } from "vscode";
 import * as _ from "lodash";
 import * as open from "open";
@@ -40,17 +42,49 @@ export class TerraformApi {
         return false;
     }
 
-    private makeModuleRequest(path: string) {
+    private makeApiGet(url: string, bearer: string = null) {
+        console.log(`makeApiGet`)
+        var response;
+
+        const thisExtVersion = extensions.getExtension('mgtrrz.terraform-completer').packageJSON.version
+
+        let options = {
+            'url': url,
+            'headers': {
+                'User-Agent': 'Terraform-Completer/v' + thisExtVersion + ' ext VisualStudioCode/' + version
+            },
+            json: true
+        }
+        if (bearer) {
+            options["auth"] = {'bearer': bearer}
+        }
+        
+        
+        return new Promise(function (resolve, reject) {
+                request(options, (err, res, body) => {
+                if (err) {
+                    console.log("Error from server")
+                    console.log(err); 
+                    reject(err)
+                }
+                console.log("Got request! Logging body..")
+                console.log(body);
+                response = body;
+                resolve(response)
+            });
+        });
+
+    }
+
+    public async makeModuleRequest(module: string, version: string = "") {
         console.log("Making request..")
         
-        let url = REGISTRY_URL + REGISTRY_MODULES_PATH
+        let url = REGISTRY_URL + REGISTRY_MODULES_PATH + module + version
         
-        request(url, { json: true }, (err, res, body) => {
-            if (err) { console.log(err); }
-            console.log("Got request! Logging body..")
-            console.log(body);
-            let response = body;
-        });
+        var resp = await this.makeApiGet(url)
+        console.log("Did we get a response back?")
+        console.log(resp)
+        return resp
     }
 
     public getModuleFromApi() {
