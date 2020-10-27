@@ -41,7 +41,7 @@ export class TerraformCompletionProvider implements CompletionItemProvider {
         this.document = document;
         this.position = position;
         this.token = token;
-
+        
         console.log("position:")
         console.log(position)
 

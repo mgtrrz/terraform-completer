@@ -1,7 +1,7 @@
 {
-    "name": "terraform-autocomplete",
-    "displayName": "Terraform Autocomplete",
-    "description": "Autocomplete for AWS resources with terraform.",
+    "name": "terraform-completer",
+    "displayName": "Terraform Completer",
+    "description": "Autocomplete for terraform resources and modules.",
     "version": "0.1.0",
     "publisher": "mgtrrz",
     "repository": {
@@ -41,7 +41,18 @@
                 ],
                 "configuration": "./terraform.configuration.json"
             }
-        ]
+        ],
+        "configuration": {
+            "title": "Terraform-Completer",
+            "properties": {
+                "terraform.terraformrc_file_path": {
+                    "type": "string",
+                    "scope": "resource",
+                    "default": "~/.terraformrc",
+                    "description": "Path to your .terraformrc file, used for accessing the API key and querying the registry API."
+                  }
+            }
+        }
     },
     "scripts": {
         "vscode:prepublish": "tsc -p ./",
