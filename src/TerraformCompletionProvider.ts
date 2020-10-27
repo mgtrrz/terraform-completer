@@ -23,7 +23,7 @@ var topLevelModuleRegex = {
 var moduleInfoRegex = [
     {
         type: "source",
-        regex: /\s*source\s*=\s*"([A-Za-z0-9\/\-_]+)"/
+        regex: /\s*source\s*=\s*"([A-Za-z0-9\/\-_\.]+)"/
     },
     {
         type: "version",

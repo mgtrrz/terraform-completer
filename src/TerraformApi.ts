@@ -18,10 +18,12 @@ console.log(urls)
 const HOME_DIR = require('os').homedir();
 const TOKEN_REGEX = /^\s*token = "([a-zA-Z0-9.]+)"$/;
 const REGISTRY_URL = 'https://registry.terraform.io';
+const PRIVATE_REGISTRY_DOM = 'app.terraform.io'
+const PRIVATE_REGISTRY_API = 'https://app.terraform.io/api/registry';
 const REGISTRY_MODULES_PATH = '/v1/modules/'
 
 export class TerraformApi {
-    public apiTokenExists (): boolean {
+    public apiTokenExists (): string {
         console.log(`apiTokenExists called`);
         console.log(workspace.getConfiguration('terraform').get('terraformrc_file_path'));
 
@@ -35,11 +37,12 @@ export class TerraformApi {
                     console.log("Successfully found token using regex: ");
                     const token = TOKEN_REGEX.exec(line)[1];
                     console.log(token);
+                    return token;
                 }
             }
         }
 
-        return false;
+        return "";
     }
 
     private makeApiGet(url: string, bearer: string = null) {
@@ -77,45 +80,20 @@ export class TerraformApi {
     }
 
     public async makeModuleRequest(module: string, version: string = "") {
+        if (module.includes(PRIVATE_REGISTRY_DOM)) {
+            var base_registry_url = PRIVATE_REGISTRY_API;
+            module = module.replace(PRIVATE_REGISTRY_DOM + "/", "");
+        } else {
+            var base_registry_url = REGISTRY_URL;
+        }
+
         console.log("Making request..")
-        
-        let url = REGISTRY_URL + REGISTRY_MODULES_PATH + module + version
-        
-        var resp = await this.makeApiGet(url)
+        let url = base_registry_url + REGISTRY_MODULES_PATH + module + "/" + version
+        console.log(url)
+        var resp = await this.makeApiGet(url, this.apiTokenExists())
         console.log("Did we get a response back?")
         console.log(resp)
         return resp
     }
 
-    public getModuleFromApi() {
-        console.log(`getModule called`);
-
-        return new Promise(function (resolve, reject) {
-            console.log("Making request..")
-            request(url, { json: true }, (err, res, body) => {
-                if (err) { reject(console.log(err)); }
-                console.log("Got request! Logging body..")
-                console.log(body);
-                let response = body;
-
-                args = response["root"]["inputs"];
-                console.log(args)
-
-                resolve(_.map(args, o => {
-                    let c = new CompletionItem(`${o.name} (${module})`, CompletionItemKind.Property);
-                    c.kind = CompletionItemKind.Variable;
-                    let def = "";
-                    if (o.required) {
-                        def = "Required - "
-                    } else {
-                        def = `Optional (Default: ${o.default}) - `
-                    }
-                    c.detail = def + o.description;
-                    c.insertText = o.name;
-                    return c;
-                }));
-
-            });
-        });
-    }
 }
