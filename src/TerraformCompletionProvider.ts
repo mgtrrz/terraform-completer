@@ -1,7 +1,7 @@
 import { CompletionItemProvider, TextDocument, Position, CancellationToken, CompletionItem, CompletionItemKind } from "vscode";
 var resources = require('../../aws-resources.json');
 import * as _ from "lodash";
-import * as request from 'request'; 
+import { TerraformApi } from "./TerraformApi";
 
 const Cache = require('vscode-cache');
 
@@ -36,7 +36,7 @@ export class TerraformCompletionProvider implements CompletionItemProvider {
     position: Position;
     token: CancellationToken;
 
-    public async provideCompletionItems(document: TextDocument, position: Position, token: CancellationToken): CompletionItem[] {
+    public provideCompletionItems(document: TextDocument, position: Position, token: CancellationToken): CompletionItem[] {
         console.log("provideCompletionItems called. Entry point!")
         this.document = document;
         this.position = position;
@@ -123,7 +123,7 @@ export class TerraformCompletionProvider implements CompletionItemProvider {
                 console.log("We're in a module!")
                 let moduleData = this.getModuleSourceAndVersion();
                 if (moduleData.source) {
-                    let obj = await this.getItemsForModule(moduleData.source, moduleData.version);
+                    let obj = this.getItemsForModule(moduleData.source, moduleData.version);
                     console.log("Got Object!")
                     console.log(obj)
                     return obj;
@@ -295,41 +295,32 @@ export class TerraformCompletionProvider implements CompletionItemProvider {
         });
     }
 
-    getItemsForModule(module: string, version: string = "") {
-        if (version) {
-            console.log('Got version')
-            version = `/${version}`
+    getItemsForModule(module: string, version: string = ""): CompletionItem|boolean {
+        console.log("getItemsForModule called");
+        let tfApi = new TerraformApi();
+        let resp = tfApi.makeModuleRequest(module, version)
+        console.log("made it back!")
+        console.log(resp)
+        if (resp) {
+            var args = resp["root"]["inputs"];
+        } else {
+            return false;
         }
-        let url = REGISTRY_MODULES_URL + module + version
-        console.log(url)
-        var args = []
+
+        console.log(args)
         
-        return new Promise(function (resolve, reject) {
-            console.log("Making request..")
-            request(url, { json: true }, (err, res, body) => {
-                if (err) { reject(console.log(err)); }
-                console.log("Got request! Logging body..")
-                console.log(body);
-                let response = body;
-
-                args = response["root"]["inputs"];
-                console.log(args)
-
-                resolve(_.map(args, o => {
-                    let c = new CompletionItem(`${o.name} (${module})`, CompletionItemKind.Property);
-                    c.kind = CompletionItemKind.Variable;
-                    let def = "";
-                    if (o.required) {
-                        def = "Required - "
-                    } else {
-                        def = `Optional (Default: ${o.default}) - `
-                    }
-                    c.detail = def + o.description;
-                    c.insertText = o.name;
-                    return c;
-                }));
-
-            });
-        });
+        return _.map(args, o => {
+            let c = new CompletionItem(`${o.name} (${module})`, CompletionItemKind.Property);
+            c.kind = CompletionItemKind.Variable;
+            let def = "";
+            if (o.required) {
+                def = "Required - "
+            } else {
+                def = `Optional (Default: ${o.default}) - `
+            }
+            c.detail = def + o.description;
+            c.insertText = o.name;
+            return c;
+        })
     }
 }

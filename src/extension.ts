@@ -11,7 +11,8 @@ export function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(vscode.languages.registerDefinitionProvider(TF_MODE, new TerraformDefinitionProvider()));
 
     var tfapi = new TerraformApi();
-    tfapi.makeModuleRequest("app.terraform.io/wave/rds-mysql/aws", "2.3.0")
+    //tfapi.makeModuleRequest("app.terraform.io/wave/rds-mysql/aws", "2.3.0")
+    tfapi.makeModuleRequest("terraform-aws-modules/alb/aws", "5.9.0")
 
     console.log(context.globalStorageUri.path)
     console.log(vscode.version)

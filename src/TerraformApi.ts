@@ -10,7 +10,7 @@ import {
 } from "vscode";
 import * as _ from "lodash";
 import * as open from "open";
-import * as request from 'request'; 
+import Axios, * as ax from 'axios';
 import * as fs from 'fs';
 var urls = require("../../aws-urls.json");
 console.log(urls)
@@ -45,41 +45,55 @@ export class TerraformApi {
         return "";
     }
 
-    private makeApiGet(url: string, bearer: string = null) {
+    private async makeApiGet(url: string, bearer: string = null) {
         console.log(`makeApiGet`)
         var response;
 
         const thisExtVersion = extensions.getExtension('mgtrrz.terraform-completer').packageJSON.version
 
         let options = {
-            'url': url,
             'headers': {
-                'User-Agent': 'Terraform-Completer/v' + thisExtVersion + ' ext VisualStudioCode/' + version
+                'User-Agent': 'Terraform-Completer/v' + thisExtVersion + ' ext VisualStudioCode/' + version,
             },
             json: true
         }
         if (bearer) {
-            options["auth"] = {'bearer': bearer}
+            options["headers"]["Authorization"] = 'Bearer ' + bearer
         }
-        
-        
-        return new Promise(function (resolve, reject) {
-                request(options, (err, res, body) => {
-                if (err) {
-                    console.log("Error from server")
-                    console.log(err); 
-                    reject(err)
+
+        console.log("AXIOS..")
+        try {
+            var res = await Axios.get(url, {
+                'headers': {
+                    'User-Agent': 'Terraform-Completer/v' + thisExtVersion + ' ext VisualStudioCode/' + version,
                 }
-                console.log("Got request! Logging body..")
-                console.log(body);
-                response = body;
-                resolve(response)
             });
-        });
+        } catch (err) {
+            console.log(err);
+            return false;
+        }
+        console.log("made it out of the try catch")
+        console.log(res)
+
+        return res
+        
+        // return await new Promise(function (resolve, reject) {
+        //     request(options, (err, res, body) => {
+        //         if (err) {
+        //             console.log("Error from server")
+        //             console.log(err); 
+        //             reject(err)
+        //         }
+        //         console.log("Got request! Logging body..")
+        //         console.log(body);
+        //         response = body;
+        //         resolve(response)
+        //     });
+        // });
 
     }
 
-    public async makeModuleRequest(module: string, version: string = "") {
+    public makeModuleRequest(module: string, version: string = "") {
         if (module.includes(PRIVATE_REGISTRY_DOM)) {
             var base_registry_url = PRIVATE_REGISTRY_API;
             module = module.replace(PRIVATE_REGISTRY_DOM + "/", "");
@@ -90,7 +104,8 @@ export class TerraformApi {
         console.log("Making request..")
         let url = base_registry_url + REGISTRY_MODULES_PATH + module + "/" + version
         console.log(url)
-        var resp = await this.makeApiGet(url, this.apiTokenExists())
+        var resp = this.makeApiGet(url, this.apiTokenExists())
+        
         console.log("Did we get a response back?")
         console.log(resp)
         return resp

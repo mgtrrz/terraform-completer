@@ -50,7 +50,7 @@
                     "scope": "resource",
                     "default": "~/.terraformrc",
                     "description": "Path to your .terraformrc file, used for accessing the API key and querying the registry API."
-                  }
+                }
             }
         }
     },
@@ -68,8 +68,8 @@
         "vscode": "^1.1.5"
     },
     "dependencies": {
+        "@types/axios": "^0.14.0",
         "@types/open": "^6.2.1",
-        "@types/request": "^2.48.5",
         "lodash": "^4.17.4",
         "vscode-cache": "^0.3.0"
     }
