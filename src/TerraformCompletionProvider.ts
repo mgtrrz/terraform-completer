@@ -123,10 +123,7 @@ export class TerraformCompletionProvider implements CompletionItemProvider {
                 console.log("We're in a module!")
                 let moduleData = this.getModuleSourceAndVersion();
                 if (moduleData.source) {
-                    let obj = this.getItemsForModule(moduleData.source, moduleData.version);
-                    console.log("Got Object!")
-                    console.log(obj)
-                    return obj;
+                    return this.getItemsForModule(moduleData.source, moduleData.version);
                 }   
             } else if (parentType && parentType.type != "resource") {
                 console.log("We're not in a resource type!")
@@ -295,32 +292,35 @@ export class TerraformCompletionProvider implements CompletionItemProvider {
         });
     }
 
-    getItemsForModule(module: string, version: string = ""): CompletionItem|boolean {
+    getItemsForModule(module: string, version: string = "") {
         console.log("getItemsForModule called");
         let tfApi = new TerraformApi();
-        let resp = tfApi.makeModuleRequest(module, version)
-        console.log("made it back!")
-        console.log(resp)
-        if (resp) {
-            var args = resp["root"]["inputs"];
-        } else {
-            return false;
-        }
-
-        console.log(args)
+        return tfApi.makeModuleRequest(module, version).then(resp => {
         
-        return _.map(args, o => {
-            let c = new CompletionItem(`${o.name} (${module})`, CompletionItemKind.Property);
-            c.kind = CompletionItemKind.Variable;
-            let def = "";
-            if (o.required) {
-                def = "Required - "
+            console.log("made it back!")
+            console.log(resp)
+            if (resp) {
+                var args = resp["root"]["inputs"];
             } else {
-                def = `Optional (Default: ${o.default}) - `
+                return false;
             }
-            c.detail = def + o.description;
-            c.insertText = o.name;
-            return c;
-        })
+
+            console.log(args)
+            
+            return _.map(args, o => {
+                let c = new CompletionItem(`${o.name} (${module})`, CompletionItemKind.Property);
+                c.kind = CompletionItemKind.Variable;
+                let def = "";
+                if (o.required) {
+                    def = "Required - "
+                } else {
+                    def = `Optional (Default: ${o.default}) - `
+                }
+                c.detail = def + o.description;
+                c.insertText = o.name;
+                return c;
+            })
+
+        });
     }
 }

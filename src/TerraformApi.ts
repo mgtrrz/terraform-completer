@@ -61,35 +61,7 @@ export class TerraformApi {
             options["headers"]["Authorization"] = 'Bearer ' + bearer
         }
 
-        console.log("AXIOS..")
-        try {
-            var res = await Axios.get(url, {
-                'headers': {
-                    'User-Agent': 'Terraform-Completer/v' + thisExtVersion + ' ext VisualStudioCode/' + version,
-                }
-            });
-        } catch (err) {
-            console.log(err);
-            return false;
-        }
-        console.log("made it out of the try catch")
-        console.log(res)
-
-        return res
-        
-        // return await new Promise(function (resolve, reject) {
-        //     request(options, (err, res, body) => {
-        //         if (err) {
-        //             console.log("Error from server")
-        //             console.log(err); 
-        //             reject(err)
-        //         }
-        //         console.log("Got request! Logging body..")
-        //         console.log(body);
-        //         response = body;
-        //         resolve(response)
-        //     });
-        // });
+        return await Axios.get(url, options);
 
     }
 
@@ -104,11 +76,18 @@ export class TerraformApi {
         console.log("Making request..")
         let url = base_registry_url + REGISTRY_MODULES_PATH + module + "/" + version
         console.log(url)
-        var resp = this.makeApiGet(url, this.apiTokenExists())
-        
-        console.log("Did we get a response back?")
-        console.log(resp)
-        return resp
+        return this.makeApiGet(url, this.apiTokenExists()).then(resp => {
+            console.log("Did we get a response back?")
+            console.log(resp);
+            return resp["data"];
+        }, failure => {
+            // Something happened on the original request
+            return false;
+        });
+
+        // console.log("Did we get a response back?")
+        // console.log(resp)
+        // return resp
     }
 
 }

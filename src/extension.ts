@@ -12,8 +12,11 @@ export function activate(context: vscode.ExtensionContext) {
 
     var tfapi = new TerraformApi();
     //tfapi.makeModuleRequest("app.terraform.io/wave/rds-mysql/aws", "2.3.0")
-    tfapi.makeModuleRequest("terraform-aws-modules/alb/aws", "5.9.0")
-
+    var mything = tfapi.makeModuleRequest("terraform-aws-modules/alb/aws", "5.9.0").then(resp => {
+        console.log("logging resp") 
+        console.log(resp)
+    });
+    
     console.log(context.globalStorageUri.path)
     console.log(vscode.version)
     console.log(vscode.extensions.getExtension('mgtrrz.terraform-completer').packageJSON.version)
