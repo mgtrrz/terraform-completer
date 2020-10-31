@@ -1,17 +1,9 @@
-import { 
-    DefinitionProvider,
-    TextDocument,
-    Position,
-    CancellationToken,
-    Definition,
-    workspace,
-    version,
-    extensions
-} from "vscode";
+import * as vscode from "vscode";
 import * as _ from "lodash";
 import * as open from "open";
 import Axios, * as ax from 'axios';
 import * as fs from 'fs';
+import { tfAutoCompleterContext } from "./extension";
 var urls = require("../../aws-urls.json");
 console.log(urls)
 
@@ -25,7 +17,7 @@ const REGISTRY_MODULES_PATH = '/v1/modules/'
 export class TerraformApi {
     public apiTokenExists (): string {
         console.log(`apiTokenExists called`);
-        console.log(workspace.getConfiguration('terraform').get('terraformrc_file_path'));
+        console.log(vscode.workspace.getConfiguration('terraform').get('terraformrc_file_path'));
 
         const tfrcFile = HOME_DIR + '/.terraformrc';
         console.log(tfrcFile);
@@ -49,11 +41,11 @@ export class TerraformApi {
         console.log(`makeApiGet`)
         var response;
 
-        const thisExtVersion = extensions.getExtension('mgtrrz.terraform-completer').packageJSON.version
+        const thisExtVersion = vscode.extensions.getExtension('mgtrrz.terraform-completer').packageJSON.version
 
         let options = {
             'headers': {
-                'User-Agent': 'Terraform-Completer/v' + thisExtVersion + ' ext VisualStudioCode/' + version,
+                'User-Agent': 'Terraform-Completer/v' + thisExtVersion + ' ext VisualStudioCode/' + vscode.version,
             },
             json: true
         }
@@ -65,7 +57,37 @@ export class TerraformApi {
 
     }
 
+    private putCachedResponse(key: string, value) {
+        console.log(`Writing cache file: ${key}`);
+        fs.writeFileSync(key, JSON.stringify(value), 'utf8');
+    }
+
+    private getCachedResponse(key: string) {
+        if (this.cacheKeyExists(key)) {
+            console.log(`Cache file exists! Grabbing contents of ${key}`);
+            let contents = fs.readFileSync(key, 'utf8')
+            let obj = JSON.parse(contents)
+            console.log(obj)
+            return obj;
+        }
+    }
+
+    private cacheKeyExists(key: string) {
+        return fs.existsSync(key)
+    }
+
     public makeModuleRequest(module: string, version: string = "") {
+        console.log("makeModuleRequest called")
+        // Check to see if the cached module exists
+        const moduleCacheString = module.replace(/\//g, "-") + "-" + version.replace(/\./g, "-");
+        var moduleCacheKey = tfAutoCompleterContext.globalStorageUri.path + "/" + moduleCacheString
+        if (this.cacheKeyExists(moduleCacheKey)) {
+            // let contents = this.getCachedResponse(moduleCacheKey)
+            // console.log(contents)
+            return Promise.resolve(this.getCachedResponse(moduleCacheKey));
+        }
+
+        console.log("Continuing..")
         if (module.includes(PRIVATE_REGISTRY_DOM)) {
             var base_registry_url = PRIVATE_REGISTRY_API;
             module = module.replace(PRIVATE_REGISTRY_DOM + "/", "");
@@ -82,15 +104,14 @@ export class TerraformApi {
         return this.makeApiGet(url, this.apiTokenExists()).then(resp => {
             console.log("Did we get a response back?")
             console.log(resp);
-            return resp["data"];
+            // Cache this response
+            this.putCachedResponse(moduleCacheKey, resp.data);
+
+            return resp.data;
         }, failure => {
             // Something happened on the original request
             return false;
         });
-
-        // console.log("Did we get a response back?")
-        // console.log(resp)
-        // return resp
     }
 
 }
