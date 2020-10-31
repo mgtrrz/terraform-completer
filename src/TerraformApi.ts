@@ -74,7 +74,10 @@ export class TerraformApi {
         }
 
         console.log("Making request..")
-        let url = base_registry_url + REGISTRY_MODULES_PATH + module + "/" + version
+        if (version !== "") {
+            version = "/" + version
+        }
+        let url = base_registry_url + REGISTRY_MODULES_PATH + module + version
         console.log(url)
         return this.makeApiGet(url, this.apiTokenExists()).then(resp => {
             console.log("Did we get a response back?")

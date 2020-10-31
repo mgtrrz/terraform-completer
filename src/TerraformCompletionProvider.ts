@@ -239,12 +239,26 @@ export class TerraformCompletionProvider implements CompletionItemProvider {
 
         for (var i = this.position.line - 1; i >= 0; i--) {
             let line = this.document.lineAt(i).text;
+
+            // If we reach the line defining the module
+            if (topLevelModuleRegex.regex.test(line)) {
+                console.log("Reached very top of module. Bailing!");
+                break;
+            }
+
             for (let obj of moduleInfoRegex) {
                 if (obj.regex.test(line)) {
                     console.log("Successfully found type: ");
                     console.log(obj.type);
                     moduleData[obj.type] = obj.regex.exec(line)[1];
                 }
+            }
+            
+            // Don't parse any further when we have our source and version
+            if (moduleData["source"] !== "" && moduleData["version"] !== "") {
+                console.log("Got our source and version! Bailing!");
+                console.log(moduleData);
+                break;
             }
         }
         
@@ -294,7 +308,9 @@ export class TerraformCompletionProvider implements CompletionItemProvider {
 
     getItemsForModule(module: string, version: string = "") {
         console.log("getItemsForModule called");
+
         let tfApi = new TerraformApi();
+
         return tfApi.makeModuleRequest(module, version).then(resp => {
         
             console.log("made it back!")
