@@ -59,10 +59,14 @@ export class TerraformCompletionProvider implements CompletionItemProvider {
             console.log("isTypingVariable == true")
             // These variables should always just have 3 parts, resource type, resource name, exported field
             var varString = this.getVariableString(lineTillCurrentPosition);
+            console.log("varString:")
+            console.log(varString)
             var parts = varString.split(".");
+            console.log(parts)
 
             if (parts.length == 1) {
                 // We're trying to type the resource type
+                console.log("Parts length == 1, Typing a resource type.")
                 var resourceTypePrefix = parts[1];
 
                 // Get a list of all the resource types we've defined in this file
@@ -74,6 +78,7 @@ export class TerraformCompletionProvider implements CompletionItemProvider {
             }
             else if (parts.length == 2) {
                 // We're trying to type the resource name
+                console.log("Parts length == 2, Typing a resource name.")
                 var resourceType = parts[0];
 
                 // Get a list of all the names for this resource type
@@ -82,6 +87,7 @@ export class TerraformCompletionProvider implements CompletionItemProvider {
             }
             else if (parts.length == 3) {
                 // We're trying to type the exported field for the var
+                console.log("Parts length == 3, Finding field export from resource.")
                 var resourceType = parts[0];
                 var resourceName = parts[1];
                 var attrs = resources[resourceType].attrs;
@@ -190,14 +196,17 @@ export class TerraformCompletionProvider implements CompletionItemProvider {
 
     isTypingVariable(line: string): boolean {
         console.log(`isTypingVariable: ${line}`);
-        var r = /\$\{[0-9a-zA-Z_\.\-]*$/;
-        return r.test(line);
+        let tf11Regex = /\$\{[0-9a-zA-Z_\.\-]*$/;
+        let tf12Regex = /=\s*([0-9a-zA-Z_\.\-])/;
+        return tf12Regex.test(line);
     }
 
     getVariableString(line: string): string {
         console.log(`getVariableString: ${line}`);
-        var r = /\$\{([0-9a-zA-Z_\.\-]*)$/;
-        var result = line.match(r);
+        let tf11Regex = /\$\{([0-9a-zA-Z_\.\-]*)$/;
+        let tf12Regex = /=\s*([0-9a-zA-Z_\.\-]*)$/;
+        let result = line.match(tf12Regex);
+        console.log(result)
         if (result.length > 1) {
             return result[1];
         }

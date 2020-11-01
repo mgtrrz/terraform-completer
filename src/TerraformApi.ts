@@ -1,6 +1,5 @@
 import * as vscode from "vscode";
 import * as _ from "lodash";
-import * as open from "open";
 import Axios, * as ax from 'axios';
 import * as fs from 'fs';
 import { tfAutoCompleterContext } from "./extension";
