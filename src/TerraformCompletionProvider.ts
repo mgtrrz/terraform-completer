@@ -3,10 +3,6 @@ var resources = require('../../aws-resources.json');
 import * as _ from "lodash";
 import { TerraformApi } from "./TerraformApi";
 
-const Cache = require('vscode-cache');
-
-const REGISTRY_MODULES_URL: string = 'https://registry.terraform.io/v1/modules/';
-
 const topLevelTypes = ["output", "provider", "resource", "variable", "data"];
 var topLevelRegexes = topLevelTypes.map(o => {
     return {
@@ -86,11 +82,16 @@ export class TerraformCompletionProvider implements CompletionItemProvider {
                 return _.map(names, o => new CompletionItem(o, CompletionItemKind.Field));
             }
             else if (parts.length == 3) {
-                // We're trying to type the exported field for the var
+                // We're trying to type the exported field for the resource or module
                 console.log("Parts length == 3, Finding field export from resource.")
-                var resourceType = parts[0];
-                var resourceName = parts[1];
-                var attrs = resources[resourceType].attrs;
+                let resourceType = parts[0];
+                let resourceName = parts[1];
+                if (resourceType === "resource") {
+                    var attrs = resources[resourceType].attrs;
+                } else if (resourceType === "module") {
+                    let moduleData = this.getModuleSourceAndVersionFromName(document, resourceName);
+                    return this.getOutputsForModule(moduleData.source, moduleData.version);
+                }
                 var result = _.map(attrs, o => {
                     let c = new CompletionItem(`${o.name} (${resourceType})`, CompletionItemKind.Property);
                     c.detail = o.description;
@@ -105,7 +106,6 @@ export class TerraformCompletionProvider implements CompletionItemProvider {
         }
 
         // Are we trying to type a parameter to a resource?
-
         let possibleResources = this.checkTopLevelResource(lineTillCurrentPosition);
         if (possibleResources.length > 0) {
             console.log("Getting hints for resource")
@@ -156,7 +156,7 @@ export class TerraformCompletionProvider implements CompletionItemProvider {
     }
 
     /**
-     * Returns a list of resource type strings
+     * Returns a list of resource type strings in the current document
      */
     getDefinedResourceTypes(document: TextDocument) {
         console.log(`getDefinedResourceTypes:`);
@@ -239,6 +239,12 @@ export class TerraformCompletionProvider implements CompletionItemProvider {
         });
     }
 
+
+    /**
+     * Gets the module source and version working backwards from the current
+     * cursor position. Returns immediately after either finding both the source and version
+     * or the module definition
+     */
     getModuleSourceAndVersion(): any {
         // Checking module source
         let moduleData = {
@@ -272,6 +278,49 @@ export class TerraformCompletionProvider implements CompletionItemProvider {
         }
         
         console.log(moduleData)
+        return moduleData;
+    }
+
+    getModuleSourceAndVersionFromName(document: TextDocument, moduleName: string) {
+        console.log(`getModuleSourceAndVersionFromName:`);
+        let r = RegExp("^module \"" +  moduleName + "\"")
+        let moduleFound = false;
+        let moduleData = {
+            source: "",
+            version: ""
+        }
+        console.log("Scanning document..")
+        for (let i = 0; i < document.lineCount; i++) {
+            var line = document.lineAt(i).text;
+            console.log(line)
+
+            var result = line.match(r);
+            if (result) {
+                console.log("Found module by name!")
+                moduleFound = true;
+            }
+
+            if (moduleFound) {
+                for (let obj of moduleInfoRegex) {
+                    if (obj.regex.test(line)) {
+                        console.log(`Successfully found type: ${obj.type}`);
+                        moduleData[obj.type] = obj.regex.exec(line)[1];
+                    }
+                }
+                
+                // Don't parse any further when we have our source and version
+                if (moduleData["source"] !== "" && moduleData["version"] !== "") {
+                    console.log("Got our source and version! Bailing!");
+                    console.log(moduleData);
+                    break;
+                }
+            }
+
+            if (moduleFound && line.match(/^}$/)) {
+                console.log("module end found, could not determine module source");
+                break;
+            }
+        }
         return moduleData;
     }
 
@@ -319,18 +368,12 @@ export class TerraformCompletionProvider implements CompletionItemProvider {
         console.log("getItemsForModule called");
 
         let tfApi = new TerraformApi();
-
         return tfApi.makeModuleRequest(module, version).then(resp => {
-        
-            console.log("made it back!")
-            console.log(resp)
             if (resp) {
                 var args = resp["root"]["inputs"];
             } else {
                 return false;
             }
-
-            console.log(args)
             
             return _.map(args, o => {
                 let c = new CompletionItem(`${o.name} (${module})`, CompletionItemKind.Property);
@@ -342,6 +385,28 @@ export class TerraformCompletionProvider implements CompletionItemProvider {
                     def = `Optional (Default: ${o.default}) - `
                 }
                 c.detail = def + o.description;
+                c.insertText = o.name;
+                return c;
+            })
+
+        });
+    }
+
+    getOutputsForModule(module: string, version: string = "") {
+        console.log("getOutputsForModule called");
+
+        let tfApi = new TerraformApi();
+        return tfApi.makeModuleRequest(module, version).then(resp => {
+            if (resp) {
+                var args = resp["root"]["outputs"];
+            } else {
+                return false;
+            }
+            
+            return _.map(args, o => {
+                let c = new CompletionItem(`${o.name} (${module})`, CompletionItemKind.Property);
+                c.kind = CompletionItemKind.Variable;
+                c.detail = o.description;
                 c.insertText = o.name;
                 return c;
             })
