@@ -112,7 +112,7 @@ export class TerraformCompletionProvider implements CompletionItemProvider {
             return this.getHintsForStrings(possibleResources);
         }
 
-        // Check if we're in a resource definition
+        // Check if we're in a resource or module definition
         console.log("Entering for section")
         let source = []
         let sourceFound: boolean = false
@@ -122,9 +122,11 @@ export class TerraformCompletionProvider implements CompletionItemProvider {
             console.log(`parentType: ${parentType}`);
 
             if (parentType && parentType.type == "resource") {
+                // May have been replaced by Terraform Language server
                 console.log("We're in resource type!")
                 let resourceType = this.getResourceTypeFromLine(line);
-                return this.getItemsForArgs(resources[resourceType].args, resourceType);           
+                return []
+                //return this.getItemsForArgs(resources[resourceType].args, resourceType);           
             }  else if (parentType && parentType.type == "module") {
                 console.log("We're in a module!")
                 let moduleData = this.getModuleSourceAndVersion();
@@ -198,13 +200,14 @@ export class TerraformCompletionProvider implements CompletionItemProvider {
         console.log(`isTypingVariable: ${line}`);
         let tf11Regex = /\$\{[0-9a-zA-Z_\.\-]*$/;
         let tf12Regex = /=\s*([0-9a-zA-Z_\.\-])/;
-        return tf12Regex.test(line);
+        let varRegex = /(resource|module)\./
+        return varRegex.test(line);
     }
 
     getVariableString(line: string): string {
         console.log(`getVariableString: ${line}`);
         let tf11Regex = /\$\{([0-9a-zA-Z_\.\-]*)$/;
-        let tf12Regex = /=\s*([0-9a-zA-Z_\.\-]*)$/;
+        let tf12Regex = /([0-9a-zA-Z_\.\-]*)$/;
         let result = line.match(tf12Regex);
         console.log(result)
         if (result.length > 1) {
@@ -241,7 +244,7 @@ export class TerraformCompletionProvider implements CompletionItemProvider {
 
 
     /**
-     * Gets the module source and version working backwards from the current
+     * Finds the module source and version working backwards from the current
      * cursor position. Returns immediately after either finding both the source and version
      * or the module definition
      */
@@ -281,6 +284,10 @@ export class TerraformCompletionProvider implements CompletionItemProvider {
         return moduleData;
     }
 
+    /**
+     * Finds the module source and version working forward when we find the line with the
+     * provided moduleName. Ends when we reach a newline with only '}'.
+     */
     getModuleSourceAndVersionFromName(document: TextDocument, moduleName: string) {
         console.log(`getModuleSourceAndVersionFromName:`);
         let r = RegExp("^module \"" +  moduleName + "\"")
