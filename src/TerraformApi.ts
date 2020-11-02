@@ -3,15 +3,26 @@ import * as _ from "lodash";
 import Axios, * as ax from 'axios';
 import * as fs from 'fs';
 import { tfAutoCompleterContext } from "./extension";
+import { fail } from "assert";
 var urls = require("../../aws-urls.json");
 console.log(urls)
 
 const HOME_DIR = require('os').homedir();
 const TOKEN_REGEX = /^\s*token = "([a-zA-Z0-9.]+)"$/;
-const REGISTRY_URL = 'https://registry.terraform.io';
-const PRIVATE_REGISTRY_DOM = 'app.terraform.io'
-const PRIVATE_REGISTRY_API = 'https://app.terraform.io/api/registry';
+
 const REGISTRY_MODULES_PATH = '/v1/modules/'
+
+// private source looks like: app.terraform.io/<org>/<mod-name>/<provider>
+// private registry links: app.terraform.io/app/<org>/modules/view/<mod-name>/<provider>
+const PRIVATE_REGISTRY_DOM = 'app.terraform.io'
+const PRIVATE_REGISTRY_API = `https://${PRIVATE_REGISTRY_DOM}/api/registry`;
+const PRIVATE_REGISTRY_URL = `https://${PRIVATE_REGISTRY_DOM}/app/`
+const PRIVATE_REGISTRY_MOD_PATH = "/modules/view/"
+
+
+const REGISTRY_LINK = "https://registry.terraform.io/modules/"
+const REGISTRY_URL = 'https://registry.terraform.io';
+
 
 export class TerraformApi {
     public apiTokenExists (): string {
@@ -25,9 +36,8 @@ export class TerraformApi {
             let tfrcContents = fs.readFileSync(tfrcFile, 'utf8');
             for (let line of tfrcContents.split("\n")) {
                 if (TOKEN_REGEX.test(line)) {
-                    console.log("Successfully found token using regex: ");
+                    console.log("Successfully found token using regex");
                     const token = TOKEN_REGEX.exec(line)[1];
-                    console.log(token);
                     return token;
                 }
             }
@@ -36,10 +46,28 @@ export class TerraformApi {
         return "";
     }
 
+    public determineRegistryUrlFromSource(moduleSource: string) {
+        var moduleUrls = {
+            api: "",
+            url: "",
+        };
+        if (moduleSource.includes(PRIVATE_REGISTRY_DOM)) {
+            let modSplit = moduleSource.split("/");
+            let org = modSplit[1]
+            let modSrc = modSplit[2] + "/" + modSplit[3]
+
+            moduleUrls.api = PRIVATE_REGISTRY_API + REGISTRY_MODULES_PATH + moduleSource.replace(PRIVATE_REGISTRY_DOM + "/", "");
+            moduleUrls.url = PRIVATE_REGISTRY_URL + org + PRIVATE_REGISTRY_MOD_PATH + modSrc;
+        } else {
+            moduleUrls.api = REGISTRY_URL + REGISTRY_MODULES_PATH + moduleSource;
+            moduleUrls.url = REGISTRY_LINK + moduleSource;
+        }
+
+        return moduleUrls;
+    }
+
     private async makeApiGet(url: string, bearer: string = null) {
         console.log(`makeApiGet`)
-        var response;
-
         const thisExtVersion = vscode.extensions.getExtension('mgtrrz.terraform-completer').packageJSON.version
 
         let options = {
@@ -86,19 +114,11 @@ export class TerraformApi {
             return Promise.resolve(this.getCachedResponse(moduleCacheKey));
         }
 
-        console.log("Continuing..")
-        if (module.includes(PRIVATE_REGISTRY_DOM)) {
-            var base_registry_url = PRIVATE_REGISTRY_API;
-            module = module.replace(PRIVATE_REGISTRY_DOM + "/", "");
-        } else {
-            var base_registry_url = REGISTRY_URL;
-        }
-
         console.log("Making request..")
         if (version !== "") {
             version = "/" + version
         }
-        let url = base_registry_url + REGISTRY_MODULES_PATH + module + version
+        let url = this.determineRegistryUrlFromSource(module).api + version
         console.log(url)
         return this.makeApiGet(url, this.apiTokenExists()).then(resp => {
             console.log("Did we get a response back?")
@@ -109,6 +129,8 @@ export class TerraformApi {
             return resp.data;
         }, failure => {
             // Something happened on the original request
+            console.log("Made it to failure condition");
+            console.log(failure)
             return false;
         });
     }

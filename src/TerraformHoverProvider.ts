@@ -25,8 +25,8 @@ export class TerraformHoverProvider implements HoverProvider {
             // Get module name from word
             let tfApi = new TerraformApi();
             let data = await tfApi.makeModuleRequest(moduleSource[1]);
-            let registryLink = REGISTRY_LINK + data.id;
-            let links = `Registry: [${registryLink}](${registryLink})\n`;
+            let registryLink = tfApi.determineRegistryUrlFromSource(moduleSource[1]);
+            let links = `Registry: [${registryLink.url}](${registryLink.url})\n`;
             console.log("Returning data for hover");
             console.log(data);
             return new Hover(new MarkdownString(links + data.root.readme.substring(data.root.readme.indexOf("\n") + 1)), range);
