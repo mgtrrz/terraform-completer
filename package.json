@@ -6,7 +6,7 @@
     "publisher": "mgtrrz",
     "repository": {
         "type": "git",
-        "url": "https://github.com/mgtrrz/terraform-autocomplete"
+        "url": "https://github.com/mgtrrz/terraform-completer"
     },
     "engines": {
         "vscode": "^1.50.0"
