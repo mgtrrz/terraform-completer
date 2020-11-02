@@ -9,12 +9,12 @@ const TF_MODE: vscode.DocumentFilter = { language: 'terraform', scheme: 'file' }
 export var tfAutoCompleterContext;
 
 export function activate(context: vscode.ExtensionContext) {
-    console.log(context.globalStorageUri.path)
+    console.log(context.globalStoragePath)
     console.log(vscode.extensions.getExtension('mgtrrz.terraform-completer').packageJSON.version)
     tfAutoCompleterContext = context;
-    if (!fs.existsSync(context.globalStorageUri.path)){
+    if (!fs.existsSync(context.globalStoragePath)){
         console.log("Creating extension directory")
-        fs.mkdirSync(context.globalStorageUri.path);
+        fs.mkdirSync(context.globalStoragePath);
     }
 
     context.subscriptions.push(vscode.languages.registerCompletionItemProvider(TF_MODE, new TerraformCompletionProvider(), '.'));

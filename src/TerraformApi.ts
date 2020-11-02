@@ -105,7 +105,7 @@ export class TerraformApi {
         console.log("makeModuleRequest called")
         // Check to see if the cached module exists
         const moduleCacheString = module.replace(/\//g, "-") + "-" + version.replace(/\./g, "-");
-        var moduleCacheKey = tfAutoCompleterContext.globalStorageUri.path + "/" + moduleCacheString
+        var moduleCacheKey = tfAutoCompleterContext.globalStoragePath + "/" + moduleCacheString
         if (this.cacheKeyExists(moduleCacheKey)) {
             // let contents = this.getCachedResponse(moduleCacheKey)
             // console.log(contents)

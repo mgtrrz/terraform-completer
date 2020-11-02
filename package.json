@@ -55,22 +55,22 @@
         }
     },
     "scripts": {
-        "vscode:prepublish": "tsc -p ./",
-        "compile": "tsc -watch -p ./",
-        "postinstall": "node ./node_modules/vscode/bin/install",
-        "test": "node ./node_modules/vscode/bin/test"
+        "vscode:prepublish": "npm run compile",
+        "compile": "tsc -p ./",
+        "lint": "eslint src --ext ts",
+        "watch": "tsc -watch -p ./",
+        "pretest": "npm run compile && npm run lint",
+        "test": "node ./out/test/runTest.js"
     },
     "devDependencies": {
         "@types/mocha": "^2.2.32",
-        "@types/node": "^6.0.40",
+        "@types/node": "^6.14.13",
         "mocha": "^2.3.3",
-        "typescript": "^2.0.3",
-        "vscode": "^1.1.5"
+        "typescript": "^3.5.1",
+        "vscode": "^1.1.37"
     },
     "dependencies": {
         "@types/axios": "^0.14.0",
-        "@types/open": "^6.2.1",
-        "lodash": "^4.17.4",
-        "vscode-cache": "^0.3.0"
+        "lodash": "^4.17.4"
     }
 }
