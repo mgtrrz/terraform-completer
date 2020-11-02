@@ -4,8 +4,6 @@ import Axios, * as ax from 'axios';
 import * as fs from 'fs';
 import { tfAutoCompleterContext } from "./extension";
 import { fail } from "assert";
-var urls = require("../../aws-urls.json");
-console.log(urls)
 
 const HOME_DIR = require('os').homedir();
 const TOKEN_REGEX = /^\s*token = "([a-zA-Z0-9.]+)"$/;

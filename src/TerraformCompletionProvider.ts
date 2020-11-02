@@ -32,7 +32,7 @@ export class TerraformCompletionProvider implements CompletionItemProvider {
     position: Position;
     token: CancellationToken;
 
-    public provideCompletionItems(document: TextDocument, position: Position, token: CancellationToken): CompletionItem[] {
+    public async provideCompletionItems(document: TextDocument, position: Position, token: CancellationToken): Promise<CompletionItem[]> {
         console.log("provideCompletionItems called. Entry point!")
         this.document = document;
         this.position = position;
@@ -248,15 +248,15 @@ export class TerraformCompletionProvider implements CompletionItemProvider {
      * cursor position. Returns immediately after either finding both the source and version
      * or the module definition
      */
-    getModuleSourceAndVersion(): any {
+    getModuleSourceAndVersion(position = this.position, document = this.document): any {
         // Checking module source
         let moduleData = {
             source: "",
             version: ""
         }
 
-        for (var i = this.position.line - 1; i >= 0; i--) {
-            let line = this.document.lineAt(i).text;
+        for (var i = position.line - 1; i >= 0; i--) {
+            let line = document.lineAt(i).text;
 
             // If we reach the line defining the module
             if (topLevelModuleRegex.regex.test(line)) {
@@ -383,13 +383,12 @@ export class TerraformCompletionProvider implements CompletionItemProvider {
             }
             
             return _.map(args, o => {
-                let c = new CompletionItem(`${o.name} (${module})`, CompletionItemKind.Property);
-                c.kind = CompletionItemKind.Variable;
+                let c = new CompletionItem(`${o.name} (${module})`, CompletionItemKind.Variable);
                 let def = "";
                 if (o.required) {
-                    def = "Required - "
+                    def = "Required\n"
                 } else {
-                    def = `Optional (Default: ${o.default}) - `
+                    def = `Optional (Default: ${o.default})\n`
                 }
                 c.detail = def + o.description;
                 c.insertText = o.name;
@@ -411,8 +410,7 @@ export class TerraformCompletionProvider implements CompletionItemProvider {
             }
             
             return _.map(args, o => {
-                let c = new CompletionItem(`${o.name} (${module})`, CompletionItemKind.Property);
-                c.kind = CompletionItemKind.Variable;
+                let c = new CompletionItem(`${o.name} (${module})`, CompletionItemKind.Interface);
                 c.detail = o.description;
                 c.insertText = o.name;
                 return c;

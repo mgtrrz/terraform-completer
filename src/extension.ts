@@ -20,4 +20,42 @@ export function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(vscode.languages.registerCompletionItemProvider(TF_MODE, new TerraformCompletionProvider(), '.'));
     context.subscriptions.push(vscode.languages.registerDefinitionProvider(TF_MODE, new TerraformDefinitionProvider()));
     context.subscriptions.push(vscode.languages.registerHoverProvider(TF_MODE, new TerraformHoverProvider()));
+    context.subscriptions.push(vscode.languages.registerCompletionItemProvider(TF_MODE, {
+
+		async provideCompletionItems(document: vscode.TextDocument, position: vscode.Position, token: vscode.CancellationToken, context: vscode.CompletionContext) {
+            console.log("provideCompletionItems in extension.ts called!");
+            let compProvider = new TerraformCompletionProvider();
+            let moduleData = compProvider.getModuleSourceAndVersion(position, document);
+            console.log(moduleData);
+            
+            if (moduleData.source) {
+                console.log("Got moduleData source.. building required inputs")
+
+                let tfApi = new TerraformApi();
+                let data = await tfApi.makeModuleRequest(moduleData.source, moduleData.version);
+                
+                let requiredInputString = "";
+                var tabstop = 1;
+                console.log("EXPORTING INPUTS")
+                console.log(data.root.inputs)
+                for (let input of data.root.inputs) {
+                    if (input.required) {
+                        console.log("Found required input: " + input.name)
+                        console.log(input)
+                        requiredInputString += input.name + ' = "${'+ tabstop.toString() +'}"\n'
+                        tabstop += 1
+                    }
+                }
+
+                const snippetCompletion = new vscode.CompletionItem('Autofill required inputs');
+                snippetCompletion.insertText = new vscode.SnippetString(requiredInputString);
+                snippetCompletion.documentation = new vscode.MarkdownString("Automatically fills in required inputs for the module.");
+
+                return [
+                    snippetCompletion,
+                ];
+            } 
+            return [];
+		}
+    }));
 }
