@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import { TerraformCompletionProvider } from "./TerraformCompletionProvider";
 import { TerraformDefinitionProvider } from "./TerraformDefinitionProvider";
+import { TerraformHoverProvider } from "./TerraformHoverProvider";
 import { TerraformApi } from "./TerraformApi";
 
 const TF_MODE: vscode.DocumentFilter = { language: 'terraform', scheme: 'file' };
@@ -18,4 +19,5 @@ export function activate(context: vscode.ExtensionContext) {
 
     context.subscriptions.push(vscode.languages.registerCompletionItemProvider(TF_MODE, new TerraformCompletionProvider(), '.'));
     context.subscriptions.push(vscode.languages.registerDefinitionProvider(TF_MODE, new TerraformDefinitionProvider()));
+    context.subscriptions.push(vscode.languages.registerHoverProvider(TF_MODE, new TerraformHoverProvider()));
 }

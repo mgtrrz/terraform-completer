@@ -1,8 +1,8 @@
 # Terraform-Completer
 
-This extension provides basic autocomplete for Terraform modules. It is a fork of [erd0s' terraform-autocomplete](https://github.com/erd0s/terraform-autocomplete) extension and updates some of the code to work with Terraform >0.12.
+This extension provides basic autocomplete for Terraform modules. It is a fork of [erd0s' terraform-autocomplete](https://github.com/erd0s/terraform-autocomplete) extension but instead of autocompleting resources, it autocompletes inputs and outputs for modules in addition to updating some of the code to work with Terraform >0.12.
 
-Much like the original Terraform Autocomplete, this extension is **very beta** and may end up becoming obsolete by the time Terraform's official [VS Code extension](https://github.com/hashicorp/vscode-terraform) matures. However, it may help to provide a solution while we wait for better Terraform support in VS Code.
+Much like the original Terraform Autocomplete, this extension is **very beta** and may end up becoming obsolete by the time Terraform's official [VS Code extension](https://github.com/hashicorp/vscode-terraform) matures. However, it may help to provide a solution while we wait for more feature-rich autocomplete support in VS Code for Terraform.
 
 ### Companion extensions
 
