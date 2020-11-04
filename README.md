@@ -10,7 +10,7 @@ Pair this extension with the [official Terraform VS Code extension](https://gith
 
 ## Features
 
-The extension for the time being **only works** for modules hosted in the [Terraform registry](https://registry.terraform.io/). There is support for public and private modules by utilizing the APIs provided by Hashicorp. To take advantage of modules hosted in private registries, log in to your account by running `terraform login`. The extension will automatically grab the token saved in the `~/.terraformrc` file and include in the Authorization headers to the registry API (https://registry.terraform.io or https://app.terraform.io/api/registry).
+The extension for the time being **only works** for modules hosted in the [Terraform registry](https://registry.terraform.io/). There is support for public and private modules by utilizing the APIs provided by Hashicorp. To take advantage of modules hosted in private registries, log in to your account by running `terraform login`. The extension will automatically grab the token saved in the `~/.terraformrc` or `~/.terraform.d/credentials.tfrc.json` file and include in the Authorization headers to the registry API (https://registry.terraform.io or https://app.terraform.io/api/registry).
 
 Autocomplete module inputs
 
@@ -35,6 +35,7 @@ Snippet for adding required inputs
 - Some modules report optional inputs as required (Registry API reports the required inputs incorrectly).
 - Some modules in the registry may not provide any autocompletion (Registry API reports 404 on these modules or we're searching the URL incorrectly.)
 - Cannot parse other files in the current directory for more modules.
+- Untested in Windows
 
 ## Release Notes
 
