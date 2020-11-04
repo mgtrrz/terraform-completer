@@ -5,7 +5,7 @@ import * as fs from 'fs';
 import { tfAutoCompleterContext } from "./extension";
 import { fail } from "assert";
 
-const HOME_DIR = require('os').homedir();
+const HOME_DIR:string = require('os').homedir();
 const TOKEN_REGEX = /^\s*token = "([a-zA-Z0-9.]+)"$/;
 
 const REGISTRY_MODULES_PATH = '/v1/modules/'
@@ -23,20 +23,51 @@ const REGISTRY_URL = 'https://registry.terraform.io';
 
 
 export class TerraformApi {
-    public apiTokenExists (): string {
-        console.log(`apiTokenExists called`);
+
+    private defaultTerraformRcLocations = [
+        {
+            path: HOME_DIR + '/.terraformrc',
+            type: "plaintext"
+        },
+        {
+            path: HOME_DIR + '/.terraform.d/credentials.tfrc.json',
+            type: "json"
+        }
+    ]
+
+    constructor() {
+        // if (vscode.workspace.getConfiguration('terraform').get('terraformrc_file_path')) {
+        //     this.defaultTerraformRcLocations.push({
+        //         path: vscode.workspace.getConfiguration('terraform').get('terraformrc_file_path')
+        //     })
+        // }
+    }
+
+    public getApiToken (): string {
+        console.log(`getApiToken called`);
         console.log(vscode.workspace.getConfiguration('terraform').get('terraformrc_file_path'));
 
-        const tfrcFile = HOME_DIR + '/.terraformrc';
-        console.log(tfrcFile);
+        for (let location of this.defaultTerraformRcLocations) {
+            console.log(location)
+            console.log(location.path)
+        
+            if (fs.existsSync(location.path)) {
+                let tfrcContents = fs.readFileSync(location.path, 'utf8')
 
-        if (fs.existsSync(tfrcFile)) {
-            let tfrcContents = fs.readFileSync(tfrcFile, 'utf8');
-            for (let line of tfrcContents.split("\n")) {
-                if (TOKEN_REGEX.test(line)) {
-                    console.log("Successfully found token using regex");
-                    const token = TOKEN_REGEX.exec(line)[1];
-                    return token;
+                if (location.type === "plaintext") {
+                    for (let line of tfrcContents.split("\n")) {
+                        if (TOKEN_REGEX.test(line)) {
+                            console.log("Successfully found token using regex");
+                            const token = TOKEN_REGEX.exec(line)[1];
+                            return token;
+                        }
+                    }
+                } else if (location.type === "json") {
+                    let obj = JSON.parse(tfrcContents)
+                    if (obj.credentials["app.terraform.io"].token) {
+                        console.log("Successfully found token using regex");
+                        return obj.credentials["app.terraform.io"].token
+                    }
                 }
             }
         }
@@ -118,7 +149,7 @@ export class TerraformApi {
         }
         let url = this.determineRegistryUrlFromSource(module).api + version
         console.log(url)
-        return this.makeApiGet(url, this.apiTokenExists()).then(resp => {
+        return this.makeApiGet(url, this.getApiToken()).then(resp => {
             console.log("Did we get a response back?")
             console.log(resp);
             // Cache this response

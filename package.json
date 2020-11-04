@@ -50,6 +50,13 @@
                     "scope": "resource",
                     "default": "~/.terraformrc",
                     "description": "Path to your .terraformrc file, used for accessing the API key and querying the registry API."
+                },
+                "terraform.terraformrc_type": {
+                    "type": "string",
+                    "scope": "resource",
+                    "default": "plaintext",
+                    "enum": ["plaintext", "json"],
+                    "description": "File type of supplied .terraformrc file."
                 }
             }
         }
