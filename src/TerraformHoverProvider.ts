@@ -11,7 +11,7 @@ import * as _ from "lodash";
 import { TerraformApi } from "./TerraformApi";
 
 const REGISTRY_LINK = "https://registry.terraform.io/modules/"
-var sourceRegex = /source\s*=\s*\"([a-zA-Z0-9\/\-_]+)\"/
+var sourceRegex = /source\s*=\s*\"([a-zA-Z0-9\/\-_\.]+)\"/
 
 export class TerraformHoverProvider implements HoverProvider {
     public async provideHover (document: TextDocument, position: Position, token: CancellationToken): Promise<Hover|null> {
