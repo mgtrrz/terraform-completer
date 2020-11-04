@@ -6,7 +6,7 @@ Much like the original Terraform Autocomplete, this extension is **very beta** a
 
 ### Companion extensions
 
-Pair this extension with the [official Terraform VS Code extension]((https://github.com/hashicorp/vscode-terraform)) to provide syntax highlighting and some autocomplete for resources.
+Pair this extension with the [official Terraform VS Code extension](https://github.com/hashicorp/vscode-terraform) to provide syntax highlighting and some autocomplete for resources.
 
 ## Features
 
