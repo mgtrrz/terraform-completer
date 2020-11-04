@@ -8,11 +8,19 @@
         "type": "git",
         "url": "https://github.com/mgtrrz/terraform-completer"
     },
+    "icon": "images/tf-completer.png",
     "engines": {
         "vscode": "^1.50.0"
     },
     "categories": [
         "Other"
+    ],
+    "license": "MIT",
+    "keywords": [
+        "autocomplete",
+        "devops",
+        "terraform",
+        "module"
     ],
     "capabilities": {
         "completionProvider": {
