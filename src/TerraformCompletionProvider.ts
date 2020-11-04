@@ -1,4 +1,13 @@
-import { CompletionItemProvider, TextDocument, Position, CancellationToken, CompletionItem, CompletionItemKind } from "vscode";
+import { 
+    CompletionItemProvider, 
+    TextDocument, 
+    Position, 
+    CancellationToken, 
+    CompletionItem, 
+    CompletionItemKind ,
+    SnippetString,
+    MarkdownString
+} from "vscode";
 var resources = require('../../aws-resources.json');
 import * as _ from "lodash";
 import { TerraformApi } from "./TerraformApi";
@@ -37,9 +46,6 @@ export class TerraformCompletionProvider implements CompletionItemProvider {
         this.document = document;
         this.position = position;
         this.token = token;
-        
-        console.log("position:")
-        console.log(position)
 
         // Check if we're on the top level
         let lineText = document.lineAt(position.line).text;
@@ -51,8 +57,8 @@ export class TerraformCompletionProvider implements CompletionItemProvider {
         }
 
         // Are we trying to type a variable?
-        if (this.isTypingVariable(lineTillCurrentPosition)) {
-            console.log("isTypingVariable == true")
+        if (this.isTypingModule(lineTillCurrentPosition)) {
+            console.log("isTypingModule == true")
             // These variables should always just have 3 parts, resource type, resource name, exported field
             var varString = this.getVariableString(lineTillCurrentPosition);
             console.log("varString:")
@@ -113,7 +119,6 @@ export class TerraformCompletionProvider implements CompletionItemProvider {
         }
 
         // Check if we're in a resource or module definition
-        console.log("Entering for section")
         let source = []
         let sourceFound: boolean = false
         for (var i = position.line - 1; i >= 0; i--) {
@@ -129,8 +134,18 @@ export class TerraformCompletionProvider implements CompletionItemProvider {
                 //return this.getItemsForArgs(resources[resourceType].args, resourceType);           
             }  else if (parentType && parentType.type == "module") {
                 console.log("We're in a module!")
+
+                // Are we entering a value for an input?
+                // If we are, mute autocomplete items for now
+                if (this.isTypingValueToInput(lineTillCurrentPosition)) {
+                    console.log("In a module but we're typing a value. Bail for now")
+                    return [];
+                }
+
                 let moduleData = this.getModuleSourceAndVersion();
                 if (moduleData.source) {
+                    let items = []
+                    console.log("Getting items..")
                     return this.getItemsForModule(moduleData.source, moduleData.version);
                 }   
             } else if (parentType && parentType.type != "resource") {
@@ -196,11 +211,11 @@ export class TerraformCompletionProvider implements CompletionItemProvider {
         return [];
     }
 
-    isTypingVariable(line: string): boolean {
-        console.log(`isTypingVariable: ${line}`);
+    isTypingModule(line: string): boolean {
+        console.log(`isTypingModule: ${line}`);
         let tf11Regex = /\$\{[0-9a-zA-Z_\.\-]*$/;
         let tf12Regex = /=\s*([0-9a-zA-Z_\.\-])/;
-        let varRegex = /(resource|module)\./
+        let varRegex = /module\./
         return varRegex.test(line);
     }
 
@@ -242,6 +257,25 @@ export class TerraformCompletionProvider implements CompletionItemProvider {
         });
     }
 
+    /**
+     * Only checks if the line we're on has a = or : in it and we're typing to the right of it.
+     * In the future, we'll want to make a better check that we're in a map, list,
+     * or any other condition that we would want to prevent autocompleting module inputs.
+     */
+    isTypingValueToInput(line:string): boolean {
+        console.log(`isTypingValueToInput: ${line}`);
+
+        if (line) {  
+            console.log("got line")
+            let result = line.match(/.+(=|:)\s+/);
+            console.log(result)
+            if (result && result.length > 1) {
+                console.log("got some result")
+                return true;
+            }
+        }
+        return false;
+    }
 
     /**
      * Finds the module source and version working backwards from the current
@@ -371,7 +405,7 @@ export class TerraformCompletionProvider implements CompletionItemProvider {
         });
     }
 
-    getItemsForModule(module: string, version: string = "") {
+    getItemsForModule(module: string, version: string = "", includeRequiredSnippet: boolean = true) {
         console.log("getItemsForModule called");
 
         let tfApi = new TerraformApi();
@@ -381,8 +415,8 @@ export class TerraformCompletionProvider implements CompletionItemProvider {
             } else {
                 return false;
             }
-            
-            return _.map(args, o => {
+
+            let items = args.map(o => {
                 let c = new CompletionItem(o.name, CompletionItemKind.Variable);
                 if (o.required) {
                     c.detail = "Required\n" + o.description;
@@ -391,8 +425,30 @@ export class TerraformCompletionProvider implements CompletionItemProvider {
                 }
                 c.insertText = o.name;
                 return c;
-            })
+            });
 
+            if (includeRequiredSnippet) {
+                console.log("Including required input snippet")
+                let requiredInputString = "";
+                var tabstop = 1;
+
+                for (let input of args) {
+                    if (input.required) {
+                        console.log("Found required input: " + input.name)
+                        console.log(input)
+                        requiredInputString += input.name + ' = "${'+ tabstop.toString() +'}"\n'
+                        tabstop += 1
+                    }
+                }
+
+                const snippetCompletion = new CompletionItem('Autofill required inputs');
+                snippetCompletion.insertText = new SnippetString(requiredInputString);
+                snippetCompletion.documentation = new MarkdownString("Automatically fills in required inputs for the module.");
+
+                items.push(snippetCompletion);
+            }
+
+            return items;
         });
     }
 
