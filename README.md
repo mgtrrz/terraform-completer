@@ -31,10 +31,10 @@ Snippet for adding required inputs
 
 ## Known Issues
 
-- The extension cannot currently parse modules with pinned versions.
+- The extension cannot accurately parse modules with pinned versions or alpha versions with special characters in the version.
 - Some modules report optional inputs as required (Registry API reports the required inputs incorrectly).
+- Some modules in the registry may not provide any autocompletion (Registry API reports 404 on these modules or we're searching the URL incorrectly.)
 - Cannot parse other files in the current directory for more modules.
-- The extension continues to autosuggest when setting a variable.
 
 ## Release Notes
 
