@@ -6,11 +6,13 @@ import {
     CompletionItem, 
     CompletionItemKind ,
     SnippetString,
-    MarkdownString
+    MarkdownString,
+    workspace
 } from "vscode";
-var resources = require('../../aws-resources.json');
+import * as fs from 'fs';
 import * as _ from "lodash";
 import { TerraformApi } from "./TerraformApi";
+var resources = require('../../aws-resources.json');
 
 const topLevelTypes = ["output", "provider", "resource", "variable", "data"];
 var topLevelRegexes = topLevelTypes.map(o => {
@@ -56,10 +58,11 @@ export class TerraformCompletionProvider implements CompletionItemProvider {
             return this.getTopLevelType(lineTillCurrentPosition);
         }
 
-        // Are we trying to type a variable?
+        // Are we trying to get the module outputs?
         if (this.isTypingModule(lineTillCurrentPosition)) {
             console.log("isTypingModule == true")
-            // These variables should always just have 3 parts, resource type, resource name, exported field
+            // These strings should always have 2 parts minimum, "module" & module name.
+            // the 3rd part is the output and we should provide autocomplete where possible.
             var varString = this.getVariableString(lineTillCurrentPosition);
             console.log("varString:")
             console.log(varString)
@@ -84,7 +87,7 @@ export class TerraformCompletionProvider implements CompletionItemProvider {
                 var resourceType = parts[0];
 
                 // Get a list of all the names for this resource type
-                var names = this.getNamesForResourceType(document, resourceType);
+                var names = this.getModulesInDocuments(document);
                 return _.map(names, o => new CompletionItem(o, CompletionItemKind.Field));
             }
             else if (parts.length == 3) {
@@ -158,10 +161,28 @@ export class TerraformCompletionProvider implements CompletionItemProvider {
         return [];
     }
 
-    getNamesForResourceType(document: TextDocument, resourceType: string): string[] {
-        console.log(`getNamesForResourceType: ${resourceType}`);
-        var r = new RegExp('resource "' + resourceType +'" "([a-zA-Z0-9\-_]+)"');
+    getModulesInDocuments(document: TextDocument): string[] {
+        console.log("getModulesInDocuments:");
         var found = [];
+
+        // TODO: Revisit, this would be an expensive operation if performed
+        // on literally every letter type. Especially for large workspaces.
+        // console.log(workspace.workspaceFolders)
+        // if (workspace.workspaceFolders !== undefined) {
+        //     let curDir = workspace.workspaceFolders[0].uri.fsPath;
+        //     const files = fs.readdirSync(curDir);
+
+        //     for (let file of files) {
+        //         console.log(file);
+        //         let r = /^(?!\.).+\.tf$/
+        //         let res = file.match(r);
+        //         if (res.length > 1) {
+        //             let doc = workspace.openTextDocument(file);
+        //         }
+        //     }
+        // }
+
+        var r = new RegExp('module "([a-zA-Z0-9\-_]+)"');
         for (var i = 0; i < document.lineCount; i++) {
             var line = document.lineAt(i).text;
             var result = line.match(r);
@@ -169,6 +190,7 @@ export class TerraformCompletionProvider implements CompletionItemProvider {
                 found.push(result[1]);
             }
         }
+        console.log(found)
         return _.uniq(found);
     }
 
