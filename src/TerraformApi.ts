@@ -17,10 +17,8 @@ const PRIVATE_REGISTRY_API = `https://${PRIVATE_REGISTRY_DOM}/api/registry`;
 const PRIVATE_REGISTRY_URL = `https://${PRIVATE_REGISTRY_DOM}/app/`
 const PRIVATE_REGISTRY_MOD_PATH = "/modules/view/"
 
-
 const REGISTRY_LINK = "https://registry.terraform.io/modules/"
 const REGISTRY_URL = 'https://registry.terraform.io';
-
 
 export class TerraformApi {
 

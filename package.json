@@ -1,8 +1,8 @@
 {
     "name": "terraform-completer",
     "displayName": "Terraform Completer",
-    "description": "Autocomplete for terraform resources and modules.",
-    "version": "0.1.0",
+    "description": "Autocomplete for terraform modules.",
+    "version": "0.1.1",
     "publisher": "mgtrrz",
     "repository": {
         "type": "git",

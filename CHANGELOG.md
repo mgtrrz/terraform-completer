@@ -1,6 +1,10 @@
 # Change Log
 All notable changes to the "terraform-completer" extension will be documented in this file.
 
+## [0.1.1] - 2020-11-08
+### Added
+- The extension will now autocomplete module names that exist within your document when referencing it as variable.
+
 ## [0.1.0] - 2020-11-02
 ### Changed
 - Extension was forked from [erd0s' terraform-autocomplete](https://github.com/erd0s/terraform-autocomplete) 
