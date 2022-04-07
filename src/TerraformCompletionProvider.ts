@@ -174,19 +174,19 @@ export class TerraformCompletionProvider implements CompletionItemProvider {
             console.log(currentFile)
             let curDir = currentFile.substring(0, currentFile.lastIndexOf("/"));
             console.log(curDir)
-            var files = fs.readdirSync(curDir);
 
-            for (let file of files) {
-                let r = /^(?!\.).+\.tf$/
-                let res = file.match(r);
-                if (res.length > 1) {
-                    console.log(file);
-                    workspace.openTextDocument(file).then(
+            for (let file of fs.readdirSync(curDir)) {
+                let res = file.match(/^.+\.tf$/);
+                if (res && res.length >= 1) {
+                    console.log("Working on file: " + file)
+                    workspace.openTextDocument(curDir + "/" + file).then(
                         doc => {
                             for (var i = 0; i < doc.lineCount; i++) {
                                 var line = doc.lineAt(i).text;
                                 var result = line.match(moduleRegex);
                                 if (result && result.length > 1) {
+                                    console.log("Found module:")
+                                    console.log(result)
                                     found.push(result[1]);
                                 }
                             }
