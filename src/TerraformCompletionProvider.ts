@@ -88,8 +88,12 @@ export class TerraformCompletionProvider implements CompletionItemProvider {
                 var resourceType = parts[0];
 
                 // Get a list of all the names for this resource type
-                var names = this.getModulesInDocuments(document);
-                return _.map(names, o => new CompletionItem(o, CompletionItemKind.Field));
+                return this.getModulesInDocuments().then(
+                    foundItems => {
+                        return _.map(foundItems, o => new CompletionItem(o, CompletionItemKind.Field));
+                    }
+                )
+                // return _.map(names, o => new CompletionItem(o, CompletionItemKind.Field));
             }
             else if (parts.length == 3) {
                 // We're trying to type the exported field for the resource or module
@@ -162,7 +166,13 @@ export class TerraformCompletionProvider implements CompletionItemProvider {
         return [];
     }
 
-    getModulesInDocuments(document: TextDocument): string[] {
+    /**
+     * Returns a list of modules that have been discovered in the current working
+     * directory.
+     * Current working directory in this context means the directory that the text
+     * editor is active on.
+     */
+    async getModulesInDocuments(): Promise<string[]> {
         console.log("getModulesInDocuments:");
         var found = [];
 
@@ -179,36 +189,30 @@ export class TerraformCompletionProvider implements CompletionItemProvider {
                 let res = file.match(/^.+\.tf$/);
                 if (res && res.length >= 1) {
                     console.log("Working on file: " + file)
-                    workspace.openTextDocument(curDir + "/" + file).then(
+                    return workspace.openTextDocument(curDir + "/" + file).then(
                         doc => {
                             for (var i = 0; i < doc.lineCount; i++) {
                                 var line = doc.lineAt(i).text;
                                 var result = line.match(moduleRegex);
                                 if (result && result.length > 1) {
-                                    console.log("Found module:")
-                                    console.log(result)
+                                    console.log("Found module: " + result[1])
                                     found.push(result[1]);
                                 }
                             }
+                            // currently this returns just the first file
+                            console.log(found)
+                            return _.uniq(found);
                         },
                         err => {
+                            console.log(err)
                             console.log("Error when opening document!")
+                            return found
                         }
                     )
+
                 }
             }
         }
-
-        // var r = new RegExp('module "([a-zA-Z0-9\-_]+)"');
-        // for (var i = 0; i < document.lineCount; i++) {
-        //     var line = document.lineAt(i).text;
-        //     var result = line.match(r);
-        //     if (result && result.length > 1) {
-        //         found.push(result[1]);
-        //     }
-        // }
-        console.log(found)
-        return _.uniq(found);
     }
 
     /**
