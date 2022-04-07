@@ -182,36 +182,34 @@ export class TerraformCompletionProvider implements CompletionItemProvider {
         }
 
         console.log("Determining current directory..")
-        let currentFile = window.activeTextEditor.document.uri.fsPath
-        let curDir = currentFile.substring(0, currentFile.lastIndexOf("/"));
+        let curDir = this.getActiveTextEditorDirectory()
         console.log(curDir)
 
-        for (let file of fs.readdirSync(curDir)) {
-            let res = file.match(/^.+\.tf$/);
-            if (res && res.length >= 1) {
-                found.push(
-                    await workspace.openTextDocument(curDir + "/" + file).then(
-                        doc => {
-                            let foundModules = []
-                            for (var i = 0; i < doc.lineCount; i++) {
-                                var line = doc.lineAt(i).text;
-                                var result = line.match(topLevelModuleRegex.regexCapture);
-                                if (result && result.length >= 1) {
-                                    foundModules.push(result[1]);
-                                }
+        let tfFiles = this.getListOfTerraformFilesInDirectory(curDir)
+
+        for (let file of tfFiles) {
+            found.push(
+                await workspace.openTextDocument(file).then(
+                    doc => {
+                        let foundModules = []
+                        for (var i = 0; i < doc.lineCount; i++) {
+                            var line = doc.lineAt(i).text;
+                            var result = line.match(topLevelModuleRegex.regexCapture);
+                            if (result && result.length >= 1) {
+                                foundModules.push(result[1]);
                             }
-                            return _.uniq(foundModules);
-                        },
-                        err => {
-                            console.log(err)
-                            console.log("Error when opening document!")
-                            return []
                         }
-                    )
+                        return _.uniq(foundModules);
+                    },
+                    err => {
+                        console.log(err)
+                        console.log("Error when opening document!")
+                        return []
+                    }
                 )
-            }
+            )
         }
-        
+
         // If all went well, we'll get a nested array with module names. We need to flatten the array.
         let flattenArray = found.reduce((accumulator, value) => accumulator.concat(value), [])
         console.log(flattenArray)
@@ -368,7 +366,7 @@ export class TerraformCompletionProvider implements CompletionItemProvider {
      * Finds the module source and version working forward when we find the line with the
      * provided moduleName. Ends when we reach a newline with only '}'.
      */
-    getModuleSourceAndVersionFromName(document: TextDocument, moduleName: string) {
+    getModuleSourceAndVersionFromName(document: TextDocument, moduleName: string, scanDocumentsInCurrentDirectory: boolean = true) {
         console.log(`getModuleSourceAndVersionFromName:`);
         let r = RegExp("^module \"" + moduleName + "\"")
         let moduleFound = false;
@@ -376,38 +374,33 @@ export class TerraformCompletionProvider implements CompletionItemProvider {
             source: "",
             version: ""
         }
-        console.log("Scanning document..")
+        console.log(`Scanning document for module ${moduleName}..`)
         for (let i = 0; i < document.lineCount; i++) {
             var line = document.lineAt(i).text;
-            console.log(line)
 
             var result = line.match(r);
             if (result) {
                 console.log("Found module by name!")
                 moduleFound = true;
+                continue
             }
-
-            if (moduleFound) {
-                for (let obj of moduleInfoRegex) {
-                    if (obj.regex.test(line)) {
-                        console.log(`Successfully found type: ${obj.type}`);
-                        moduleData[obj.type] = obj.regex.exec(line)[1];
-                    }
-                }
-
-                // Don't parse any further when we have our source and version
-                if (moduleData["source"] !== "" && moduleData["version"] !== "") {
-                    console.log("Got our source and version! Bailing!");
-                    console.log(moduleData);
-                    break;
+        
+            for (let obj of moduleInfoRegex) {
+                if (obj.regex.test(line)) {
+                    let res = obj.regex.exec(line)[1]
+                    console.log(`Successfully found type: ${obj.type} = ${res}`);
+                    moduleData[obj.type] = res;
                 }
             }
 
-            if (moduleFound && line.match(/^}$/)) {
-                console.log("module end found, could not determine module source");
-                break;
+            // Don't parse any further when we have our source and version
+            if (moduleData["source"] !== "" && moduleData["version"] !== "") {
+                console.log("Got our source and version!");
+                console.log(moduleData);
+                break
             }
         }
+        
         return moduleData;
     }
 
@@ -517,5 +510,29 @@ export class TerraformCompletionProvider implements CompletionItemProvider {
             })
 
         });
+    }
+
+    /**
+     * Returns the path to the current working directory with the active text editor.
+     */
+    getActiveTextEditorDirectory(): string {
+        let currentFile = window.activeTextEditor.document.uri.fsPath
+        let dir = currentFile.substring(0, currentFile.lastIndexOf("/"));
+        return dir + "/"
+    }
+
+    /**
+     * Provided a directory, returns a list of files with absolute paths that end in .tf.
+     */
+    getListOfTerraformFilesInDirectory(dir: string): string[] {
+        let files = []
+        for (let file of fs.readdirSync(dir)) {
+            let res = file.match(/^.+\.tf$/);
+            if (res && res.length >= 1) {
+                files.push(dir + file)
+            }
+        }
+
+        return files
     }
 }
