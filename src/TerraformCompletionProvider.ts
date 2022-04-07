@@ -104,8 +104,29 @@ export class TerraformCompletionProvider implements CompletionItemProvider {
                 if (resourceType === "resource") {
                     var attrs = resources[resourceType].attrs;
                 } else if (resourceType === "module") {
-                    let moduleData = this.getModuleSourceAndVersionFromName(document, resourceName);
-                    return this.getOutputsForModule(moduleData.source, moduleData.version);
+
+                    let moduleResults
+
+                    let tfFiles = this.getListOfTerraformFilesInDirectory(this.getActiveTextEditorDirectory())
+                    for (let file of tfFiles) {
+                        console.log(`Checking file ${file}`)
+                        moduleResults = await workspace.openTextDocument(file).then(
+                            doc => {
+                                return this.getModuleSourceAndVersionFromName(doc, resourceName);
+                            },
+                            err => {
+                                console.log(err)
+                                console.log("Error when opening document!")
+                                return {}
+                            }
+                        )
+                        console.log(moduleResults)
+                        if (moduleResults && moduleResults.source !== "") {
+                            break
+                        }
+                    }
+
+                    return this.getOutputsForModule(moduleResults.source, moduleResults.version);
                 }
                 var result = _.map(attrs, o => {
                     let c = new CompletionItem(`${o.name} (${resourceType})`, CompletionItemKind.Property);
@@ -366,7 +387,7 @@ export class TerraformCompletionProvider implements CompletionItemProvider {
      * Finds the module source and version working forward when we find the line with the
      * provided moduleName. Ends when we reach a newline with only '}'.
      */
-    getModuleSourceAndVersionFromName(document: TextDocument, moduleName: string, scanDocumentsInCurrentDirectory: boolean = true) {
+    getModuleSourceAndVersionFromName(document: TextDocument, moduleName: string) {
         console.log(`getModuleSourceAndVersionFromName:`);
         let r = RegExp("^module \"" + moduleName + "\"")
         let moduleFound = false;
@@ -384,12 +405,14 @@ export class TerraformCompletionProvider implements CompletionItemProvider {
                 moduleFound = true;
                 continue
             }
-        
-            for (let obj of moduleInfoRegex) {
-                if (obj.regex.test(line)) {
-                    let res = obj.regex.exec(line)[1]
-                    console.log(`Successfully found type: ${obj.type} = ${res}`);
-                    moduleData[obj.type] = res;
+
+            if (moduleFound) {
+                for (let obj of moduleInfoRegex) {
+                    if (obj.regex.test(line)) {
+                        let res = obj.regex.exec(line)[1]
+                        console.log(`Successfully found type: ${obj.type} = ${res}`);
+                        moduleData[obj.type] = res;
+                    }
                 }
             }
 
@@ -400,7 +423,7 @@ export class TerraformCompletionProvider implements CompletionItemProvider {
                 break
             }
         }
-        
+
         return moduleData;
     }
 
