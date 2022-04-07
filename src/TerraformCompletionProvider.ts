@@ -177,41 +177,41 @@ export class TerraformCompletionProvider implements CompletionItemProvider {
         console.log("getModulesInDocuments:");
         var found = [];
 
-        if (workspace.workspaceFolders !== undefined) {
-            console.log("Determining current directory..")
-            let currentFile = window.activeTextEditor.document.uri.fsPath
-            let curDir = currentFile.substring(0, currentFile.lastIndexOf("/"));
-            console.log(curDir)
+        if (workspace.workspaceFolders == undefined) {
+            return found
+        }
 
-            for (let file of fs.readdirSync(curDir)) {
-                let res = file.match(/^.+\.tf$/);
-                if (res && res.length >= 1) {
-                    console.log("Working on file: " + file)
-                    found.push(
-                        await workspace.openTextDocument(curDir + "/" + file).then(
-                            doc => {
-                                let foundModules = []
-                                for (var i = 0; i < doc.lineCount; i++) {
-                                    var line = doc.lineAt(i).text;
-                                    var result = line.match(topLevelModuleRegex.regexCapture);
-                                    if (result && result.length >= 1) {
-                                        console.log("Found module: " + result[1])
-                                        foundModules.push(result[1]);
-                                    }
+        console.log("Determining current directory..")
+        let currentFile = window.activeTextEditor.document.uri.fsPath
+        let curDir = currentFile.substring(0, currentFile.lastIndexOf("/"));
+        console.log(curDir)
+
+        for (let file of fs.readdirSync(curDir)) {
+            let res = file.match(/^.+\.tf$/);
+            if (res && res.length >= 1) {
+                found.push(
+                    await workspace.openTextDocument(curDir + "/" + file).then(
+                        doc => {
+                            let foundModules = []
+                            for (var i = 0; i < doc.lineCount; i++) {
+                                var line = doc.lineAt(i).text;
+                                var result = line.match(topLevelModuleRegex.regexCapture);
+                                if (result && result.length >= 1) {
+                                    foundModules.push(result[1]);
                                 }
-                                console.log(foundModules)
-                                return _.uniq(foundModules);
-                            },
-                            err => {
-                                console.log(err)
-                                console.log("Error when opening document!")
-                                return []
                             }
-                        )
+                            return _.uniq(foundModules);
+                        },
+                        err => {
+                            console.log(err)
+                            console.log("Error when opening document!")
+                            return []
+                        }
                     )
-                }
+                )
             }
         }
+        
         // If all went well, we'll get a nested array with module names. We need to flatten the array.
         let flattenArray = found.reduce((accumulator, value) => accumulator.concat(value), [])
         console.log(flattenArray)
