@@ -25,7 +25,8 @@ var topLevelRegexes = topLevelTypes.map(o => {
 
 var topLevelModuleRegex = {
     type: "module",
-    regex: new RegExp('module "[A-Za-z0-9\-_]+" \{')
+    regex: new RegExp('module "[A-Za-z0-9\-_]+" \{'),
+    regexCapture: new RegExp('module "([a-zA-Z0-9\-_]+)"')
 };
 
 var moduleInfoRegex = [
@@ -176,8 +177,6 @@ export class TerraformCompletionProvider implements CompletionItemProvider {
         console.log("getModulesInDocuments:");
         var found = [];
 
-        var moduleRegex = new RegExp('module "([a-zA-Z0-9\-_]+)"');
-
         if (workspace.workspaceFolders !== undefined) {
             console.log("Determining current directory..")
             let currentFile = window.activeTextEditor.document.uri.fsPath
@@ -194,8 +193,8 @@ export class TerraformCompletionProvider implements CompletionItemProvider {
                                 let foundModules = []
                                 for (var i = 0; i < doc.lineCount; i++) {
                                     var line = doc.lineAt(i).text;
-                                    var result = line.match(moduleRegex);
-                                    if (result && result.length > 1) {
+                                    var result = line.match(topLevelModuleRegex.regexCapture);
+                                    if (result && result.length >= 1) {
                                         console.log("Found module: " + result[1])
                                         foundModules.push(result[1]);
                                     }
