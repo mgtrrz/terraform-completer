@@ -3,7 +3,7 @@ All notable changes to the "terraform-completer" extension will be documented in
 
 ## [0.2.0] - 2022-04-07
 ### Added
-- Now successfully provides autocompletion for modules and module outputs from other files in the same directory.
+- Now successfully provides autocompletion for modules from other Terraform files (.tf) in the same directory.
 
 ## [0.1.1] - 2020-11-08
 ### Added
