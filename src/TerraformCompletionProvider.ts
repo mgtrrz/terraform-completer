@@ -1,18 +1,18 @@
-import { 
-    CompletionItemProvider, 
-    TextDocument, 
-    Position, 
-    CancellationToken, 
-    CompletionItem, 
-    CompletionItemKind ,
+import {
+    CompletionItemProvider,
+    TextDocument,
+    Position,
+    CancellationToken,
+    CompletionItem,
+    CompletionItemKind,
     SnippetString,
     MarkdownString,
+    window,
     workspace
 } from "vscode";
 import * as fs from 'fs';
 import * as _ from "lodash";
 import { TerraformApi } from "./TerraformApi";
-var resources = require('../../aws-resources.json');
 
 const topLevelTypes = ["output", "provider", "resource", "variable", "data"];
 var topLevelRegexes = topLevelTypes.map(o => {
@@ -24,7 +24,8 @@ var topLevelRegexes = topLevelTypes.map(o => {
 
 var topLevelModuleRegex = {
     type: "module",
-    regex: new RegExp('module "[A-Za-z0-9\-_]+" \{')
+    regex: new RegExp('module "[A-Za-z0-9\-_]+" \{'),
+    regexCapture: new RegExp('module "([a-zA-Z0-9\-_]+)"')
 };
 
 var moduleInfoRegex = [
@@ -87,27 +88,51 @@ export class TerraformCompletionProvider implements CompletionItemProvider {
                 var resourceType = parts[0];
 
                 // Get a list of all the names for this resource type
-                var names = this.getModulesInDocuments(document);
-                return _.map(names, o => new CompletionItem(o, CompletionItemKind.Field));
+                return this.getModulesInDocuments().then(
+                    foundItems => {
+                        return _.map(foundItems, o => new CompletionItem(o, CompletionItemKind.Field));
+                    }
+                )
+                // return _.map(names, o => new CompletionItem(o, CompletionItemKind.Field));
             }
             else if (parts.length == 3) {
                 // We're trying to type the exported field for the resource or module
                 console.log("Parts length == 3, Finding field export from resource.")
                 let resourceType = parts[0];
                 let resourceName = parts[1];
-                if (resourceType === "resource") {
-                    var attrs = resources[resourceType].attrs;
-                } else if (resourceType === "module") {
-                    let moduleData = this.getModuleSourceAndVersionFromName(document, resourceName);
-                    return this.getOutputsForModule(moduleData.source, moduleData.version);
+
+                if (resourceType === "module") {
+
+                    let moduleResults
+
+                    let tfFiles = this.getListOfTerraformFilesInDirectory(this.getActiveTextEditorDirectory())
+                    for (let file of tfFiles) {
+                        console.log(`Checking file ${file}`)
+                        moduleResults = await workspace.openTextDocument(file).then(
+                            doc => {
+                                return this.getModuleSourceAndVersionFromName(doc, resourceName);
+                            },
+                            err => {
+                                console.log(err)
+                                console.log("Error when opening document!")
+                                return {}
+                            }
+                        )
+                        console.log(moduleResults)
+                        if (moduleResults && moduleResults.source !== "") {
+                            break
+                        }
+                    }
+
+                    return this.getOutputsForModule(moduleResults.source, moduleResults.version);
                 }
-                var result = _.map(attrs, o => {
-                    let c = new CompletionItem(`${o.name} (${resourceType})`, CompletionItemKind.Property);
-                    c.detail = o.description;
-                    c.insertText = o.name;
-                    return c;
-                });
-                return result;
+                // var result = _.map(attrs, o => {
+                //     let c = new CompletionItem(`${o.name} (${resourceType})`, CompletionItemKind.Property);
+                //     c.detail = o.description;
+                //     c.insertText = o.name;
+                //     return c;
+                // });
+                // return result;
             }
 
             // Which part are we completing for?
@@ -135,7 +160,7 @@ export class TerraformCompletionProvider implements CompletionItemProvider {
                 let resourceType = this.getResourceTypeFromLine(line);
                 return []
                 //return this.getItemsForArgs(resources[resourceType].args, resourceType);           
-            }  else if (parentType && parentType.type == "module") {
+            } else if (parentType && parentType.type == "module") {
                 console.log("We're in a module!")
 
                 // Are we entering a value for an input?
@@ -150,7 +175,7 @@ export class TerraformCompletionProvider implements CompletionItemProvider {
                     let items = []
                     console.log("Getting items..")
                     return this.getItemsForModule(moduleData.source, moduleData.version);
-                }   
+                }
             } else if (parentType && parentType.type != "resource") {
                 console.log("We're not in a resource type!")
                 // We don't want to accidentally include some other containers stuff
@@ -161,37 +186,53 @@ export class TerraformCompletionProvider implements CompletionItemProvider {
         return [];
     }
 
-    getModulesInDocuments(document: TextDocument): string[] {
+    /**
+     * Returns a list of modules that have been discovered in the current working
+     * directory.
+     * Current working directory in this context means the directory that the text
+     * editor is active on.
+     */
+    async getModulesInDocuments(): Promise<string[]> {
         console.log("getModulesInDocuments:");
         var found = [];
 
-        // TODO: Revisit, this would be an expensive operation if performed
-        // on literally every letter type. Especially for large workspaces.
-        // console.log(workspace.workspaceFolders)
-        // if (workspace.workspaceFolders !== undefined) {
-        //     let curDir = workspace.workspaceFolders[0].uri.fsPath;
-        //     const files = fs.readdirSync(curDir);
-
-        //     for (let file of files) {
-        //         console.log(file);
-        //         let r = /^(?!\.).+\.tf$/
-        //         let res = file.match(r);
-        //         if (res.length > 1) {
-        //             let doc = workspace.openTextDocument(file);
-        //         }
-        //     }
-        // }
-
-        var r = new RegExp('module "([a-zA-Z0-9\-_]+)"');
-        for (var i = 0; i < document.lineCount; i++) {
-            var line = document.lineAt(i).text;
-            var result = line.match(r);
-            if (result && result.length > 1) {
-                found.push(result[1]);
-            }
+        if (workspace.workspaceFolders == undefined) {
+            return found
         }
-        console.log(found)
-        return _.uniq(found);
+
+        console.log("Determining current directory..")
+        let curDir = this.getActiveTextEditorDirectory()
+        console.log(curDir)
+
+        let tfFiles = this.getListOfTerraformFilesInDirectory(curDir)
+
+        for (let file of tfFiles) {
+            found.push(
+                await workspace.openTextDocument(file).then(
+                    doc => {
+                        let foundModules = []
+                        for (var i = 0; i < doc.lineCount; i++) {
+                            var line = doc.lineAt(i).text;
+                            var result = line.match(topLevelModuleRegex.regexCapture);
+                            if (result && result.length >= 1) {
+                                foundModules.push(result[1]);
+                            }
+                        }
+                        return _.uniq(foundModules);
+                    },
+                    err => {
+                        console.log(err)
+                        console.log("Error when opening document!")
+                        return []
+                    }
+                )
+            )
+        }
+
+        // If all went well, we'll get a nested array with module names. We need to flatten the array.
+        let flattenArray = found.reduce((accumulator, value) => accumulator.concat(value), [])
+        console.log(flattenArray)
+        return _.uniq(flattenArray)
     }
 
     /**
@@ -213,7 +254,7 @@ export class TerraformCompletionProvider implements CompletionItemProvider {
 
     isTopLevelType(line: string): boolean {
         console.log(`isTopLevelType: ${line}`);
-        for (var i=0; i<topLevelTypes.length; i++) {
+        for (var i = 0; i < topLevelTypes.length; i++) {
             var resourceType = topLevelTypes[i];
             if (resourceType.indexOf(line) == 0) {
                 return true;
@@ -224,7 +265,7 @@ export class TerraformCompletionProvider implements CompletionItemProvider {
 
     getTopLevelType(line: string): CompletionItem[] {
         console.log(`getTopLevelType: ${line}`);
-        for (var i=0; i<topLevelTypes.length; i++) {
+        for (var i = 0; i < topLevelTypes.length; i++) {
             var resourceType = topLevelTypes[i];
             if (resourceType.indexOf(line) == 0) {
                 return [new CompletionItem(resourceType, CompletionItemKind.Enum)];
@@ -255,19 +296,6 @@ export class TerraformCompletionProvider implements CompletionItemProvider {
 
     checkTopLevelResource(lineTillCurrentPosition: string): any[] {
         console.log(`checkTopLevelResource: ${lineTillCurrentPosition}`);
-        let parts = lineTillCurrentPosition.split(" ");
-        if (parts.length == 2 && parts[0] == "resource") {
-            let r = parts[1].replace(/"/g, '');
-            let regex = new RegExp("^" + r);
-            var possibleResources = _.filter(_.keys(resources), k => {
-                if (regex.test(k)) {
-                    return true;
-                }
-            });
-            console.log(`Got possible resource:`)
-            console.log(possibleResources)
-            return possibleResources;
-        }
         console.log("Found nothing")
         return [];
     }
@@ -284,10 +312,10 @@ export class TerraformCompletionProvider implements CompletionItemProvider {
      * In the future, we'll want to make a better check that we're in a map, list,
      * or any other condition that we would want to prevent autocompleting module inputs.
      */
-    isTypingValueToInput(line:string): boolean {
+    isTypingValueToInput(line: string): boolean {
         console.log(`isTypingValueToInput: ${line}`);
 
-        if (line) {  
+        if (line) {
             console.log("got line")
             let result = line.match(/.+(=|:)\s+/);
             console.log(result)
@@ -327,7 +355,7 @@ export class TerraformCompletionProvider implements CompletionItemProvider {
                     moduleData[obj.type] = obj.regex.exec(line)[1];
                 }
             }
-            
+
             // Don't parse any further when we have our source and version
             if (moduleData["source"] !== "" && moduleData["version"] !== "") {
                 console.log("Got our source and version! Bailing!");
@@ -335,7 +363,7 @@ export class TerraformCompletionProvider implements CompletionItemProvider {
                 break;
             }
         }
-        
+
         console.log(moduleData)
         return moduleData;
     }
@@ -346,48 +374,45 @@ export class TerraformCompletionProvider implements CompletionItemProvider {
      */
     getModuleSourceAndVersionFromName(document: TextDocument, moduleName: string) {
         console.log(`getModuleSourceAndVersionFromName:`);
-        let r = RegExp("^module \"" +  moduleName + "\"")
+        let r = RegExp("^module \"" + moduleName + "\"")
         let moduleFound = false;
         let moduleData = {
             source: "",
             version: ""
         }
-        console.log("Scanning document..")
+        console.log(`Scanning document for module ${moduleName}..`)
         for (let i = 0; i < document.lineCount; i++) {
             var line = document.lineAt(i).text;
-            console.log(line)
 
             var result = line.match(r);
             if (result) {
                 console.log("Found module by name!")
                 moduleFound = true;
+                continue
             }
 
             if (moduleFound) {
                 for (let obj of moduleInfoRegex) {
                     if (obj.regex.test(line)) {
-                        console.log(`Successfully found type: ${obj.type}`);
-                        moduleData[obj.type] = obj.regex.exec(line)[1];
+                        let res = obj.regex.exec(line)[1]
+                        console.log(`Successfully found type: ${obj.type} = ${res}`);
+                        moduleData[obj.type] = res;
                     }
-                }
-                
-                // Don't parse any further when we have our source and version
-                if (moduleData["source"] !== "" && moduleData["version"] !== "") {
-                    console.log("Got our source and version! Bailing!");
-                    console.log(moduleData);
-                    break;
                 }
             }
 
-            if (moduleFound && line.match(/^}$/)) {
-                console.log("module end found, could not determine module source");
-                break;
+            // Don't parse any further when we have our source and version
+            if (moduleData["source"] !== "" && moduleData["version"] !== "") {
+                console.log("Got our source and version!");
+                console.log(moduleData);
+                break
             }
         }
+
         return moduleData;
     }
 
-    getParentType(line: string): boolean|any {
+    getParentType(line: string): boolean | any {
         console.log(`getParentType: ${line}`);
         //console.log(topLevelRegexes)
         for (var i = 0; i < topLevelRegexes.length; i++) {
@@ -458,7 +483,7 @@ export class TerraformCompletionProvider implements CompletionItemProvider {
                     if (input.required) {
                         console.log("Found required input: " + input.name)
                         console.log(input)
-                        requiredInputString += input.name + ' = "${'+ tabstop.toString() +'}"\n'
+                        requiredInputString += input.name + ' = "${' + tabstop.toString() + '}"\n'
                         tabstop += 1
                     }
                 }
@@ -484,7 +509,7 @@ export class TerraformCompletionProvider implements CompletionItemProvider {
             } else {
                 return false;
             }
-            
+
             return _.map(args, o => {
                 let c = new CompletionItem(`${o.name} (${module})`, CompletionItemKind.Interface);
                 c.detail = o.description;
@@ -493,5 +518,29 @@ export class TerraformCompletionProvider implements CompletionItemProvider {
             })
 
         });
+    }
+
+    /**
+     * Returns the path to the current working directory with the active text editor.
+     */
+    getActiveTextEditorDirectory(): string {
+        let currentFile = window.activeTextEditor.document.uri.fsPath
+        let dir = currentFile.substring(0, currentFile.lastIndexOf("/"));
+        return dir + "/"
+    }
+
+    /**
+     * Provided a directory, returns a list of files with absolute paths that end in .tf.
+     */
+    getListOfTerraformFilesInDirectory(dir: string): string[] {
+        let files = []
+        for (let file of fs.readdirSync(dir)) {
+            let res = file.match(/^.+\.tf$/);
+            if (res && res.length >= 1) {
+                files.push(dir + file)
+            }
+        }
+
+        return files
     }
 }

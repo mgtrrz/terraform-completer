@@ -2,7 +2,7 @@
     "name": "terraform-completer",
     "displayName": "Terraform Completer",
     "description": "Autocomplete for terraform modules.",
-    "version": "0.1.1",
+    "version": "0.2.0",
     "publisher": "mgtrrz",
     "repository": {
         "type": "git",
@@ -63,7 +63,10 @@
                     "type": "string",
                     "scope": "resource",
                     "default": "plaintext",
-                    "enum": ["plaintext", "json"],
+                    "enum": [
+                        "plaintext",
+                        "json"
+                    ],
                     "description": "File type of supplied .terraformrc file."
                 }
             }
@@ -86,6 +89,9 @@
     },
     "dependencies": {
         "@types/axios": "^0.14.0",
-        "lodash": "^4.17.4"
+        "generator-code": "^1.6.9",
+        "git-checkout-interactive": "^1.0.1",
+        "lodash": "^4.17.4",
+        "yo": "^4.3.0"
     }
 }

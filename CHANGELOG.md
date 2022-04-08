@@ -1,6 +1,10 @@
 # Change Log
 All notable changes to the "terraform-completer" extension will be documented in this file.
 
+## [0.2.0] - 2022-04-07
+### Added
+- Now successfully provides autocompletion for modules from other Terraform files (.tf) in the same directory.
+
 ## [0.1.1] - 2020-11-08
 ### Added
 - The extension will now autocomplete module names that exist within your document when referencing it as variable.
