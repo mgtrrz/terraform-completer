@@ -13,7 +13,6 @@ import {
 import * as fs from 'fs';
 import * as _ from "lodash";
 import { TerraformApi } from "./TerraformApi";
-var resources = require('../../aws-resources.json');
 
 const topLevelTypes = ["output", "provider", "resource", "variable", "data"];
 var topLevelRegexes = topLevelTypes.map(o => {
@@ -101,9 +100,8 @@ export class TerraformCompletionProvider implements CompletionItemProvider {
                 console.log("Parts length == 3, Finding field export from resource.")
                 let resourceType = parts[0];
                 let resourceName = parts[1];
-                if (resourceType === "resource") {
-                    var attrs = resources[resourceType].attrs;
-                } else if (resourceType === "module") {
+
+                if (resourceType === "module") {
 
                     let moduleResults
 
@@ -128,13 +126,13 @@ export class TerraformCompletionProvider implements CompletionItemProvider {
 
                     return this.getOutputsForModule(moduleResults.source, moduleResults.version);
                 }
-                var result = _.map(attrs, o => {
-                    let c = new CompletionItem(`${o.name} (${resourceType})`, CompletionItemKind.Property);
-                    c.detail = o.description;
-                    c.insertText = o.name;
-                    return c;
-                });
-                return result;
+                // var result = _.map(attrs, o => {
+                //     let c = new CompletionItem(`${o.name} (${resourceType})`, CompletionItemKind.Property);
+                //     c.detail = o.description;
+                //     c.insertText = o.name;
+                //     return c;
+                // });
+                // return result;
             }
 
             // Which part are we completing for?
@@ -298,19 +296,6 @@ export class TerraformCompletionProvider implements CompletionItemProvider {
 
     checkTopLevelResource(lineTillCurrentPosition: string): any[] {
         console.log(`checkTopLevelResource: ${lineTillCurrentPosition}`);
-        let parts = lineTillCurrentPosition.split(" ");
-        if (parts.length == 2 && parts[0] == "resource") {
-            let r = parts[1].replace(/"/g, '');
-            let regex = new RegExp("^" + r);
-            var possibleResources = _.filter(_.keys(resources), k => {
-                if (regex.test(k)) {
-                    return true;
-                }
-            });
-            console.log(`Got possible resource:`)
-            console.log(possibleResources)
-            return possibleResources;
-        }
         console.log("Found nothing")
         return [];
     }
